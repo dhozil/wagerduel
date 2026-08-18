@@ -142,30 +142,14 @@ export function BetsTable() {
     );
   }
 
-  const visibleBets =
-    filter === "mine" && address
-      ? bets.filter(
-          (b) =>
-            b.creator?.toLowerCase() === address.toLowerCase() ||
-            (b.opponent &&
-              b.opponent.toLowerCase() === address.toLowerCase())
-        )
-      : bets;
-
-  if (visibleBets.length === 0) {
+  const visibleBets = bets.filter((b) => {
+    if (filter !== "mine") return true;
+    if (!address) return false;
     return (
-      <div className="brand-card p-12">
-        <div className="text-center space-y-3">
-          <Users className="w-16 h-16 mx-auto text-muted-foreground opacity-30" />
-          <h3 className="text-xl font-bold">No bets involving you</h3>
-          <p className="text-muted-foreground">
-            You are not a participant in any bet yet. Create one or join an
-            open challenge.
-          </p>
-        </div>
-      </div>
+      b.creator?.toLowerCase() === address.toLowerCase() ||
+      (b.opponent && b.opponent.toLowerCase() === address.toLowerCase())
     );
-  }
+  });
 
   return (
     <div className="brand-card p-6 overflow-hidden">
@@ -191,6 +175,19 @@ export function BetsTable() {
         </span>
       </div>
 
+      {visibleBets.length === 0 ? (
+        <div className="py-12 text-center space-y-3">
+          <Users className="w-16 h-16 mx-auto text-muted-foreground opacity-30" />
+          <h3 className="text-xl font-bold">
+            {!address ? "Connect to View Your Bets" : "No bets involving you"}
+          </h3>
+          <p className="text-muted-foreground">
+            {!address
+              ? "Connect your wallet to see the bets you created or joined."
+              : "You are not a participant in any bet yet. Create one or join an open challenge."}
+          </p>
+        </div>
+      ) : (
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
@@ -236,6 +233,7 @@ export function BetsTable() {
           </tbody>
         </table>
       </div>
+      )}
     </div>
   );
 }
