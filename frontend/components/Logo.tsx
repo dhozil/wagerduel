@@ -17,6 +17,7 @@ const sizeMap = {
 
 /**
  * WagerDuel mark — a gold diamond (the wager) holding a spade (the duel).
+ * Rendered from the same favicon.svg used across the app and the README.
  */
 export function WagerDuelMark({
   size = "md",
@@ -27,41 +28,12 @@ export function WagerDuelMark({
 }) {
   const { mark } = sizeMap[size];
   return (
-    <svg
-      className={`${mark} ${className} drop-shadow-[0_0_6px_rgba(234,201,92,0.55)] drop-shadow-[0_2px_12px_rgba(212,175,55,0.45)]`}
-      viewBox="0 0 48 48"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-label="WagerDuel logo"
-    >
-      <defs>
-        <linearGradient id="wd-gold" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#FBEEC7" />
-          <stop offset="0.5" stopColor="#EAC95C" />
-          <stop offset="1" stopColor="#C9992E" />
-        </linearGradient>
-      </defs>
-      {/* Diamond */}
-      <path
-        d="M24 3 L45 24 L24 45 L3 24 Z"
-        fill="url(#wd-gold)"
-        stroke="#FFF3CE"
-        strokeWidth="1.5"
-        strokeLinejoin="round"
-      />
-      {/* Spade */}
-      <path
-        d="M24 12
-           C 21 15.5, 17.5 19, 17.5 22.5
-           C 17.5 26.5, 21 28.5, 22.5 28.5
-           C 22.5 30.5, 21.5 32, 20.5 33.5
-           L 27.5 33.5
-           C 26.5 32, 25.5 30.5, 25.5 28.5
-           C 27 28.5, 30.5 26.5, 30.5 22.5
-           C 30.5 19, 27 15.5, 24 12 Z"
-        fill="#14120D"
-      />
-      <path d="M21.5 35 L26.5 35 L25.5 38.5 L22.5 38.5 Z" fill="#14120D" />
-    </svg>
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src="/favicon.svg"
+      alt="WagerDuel logo"
+      className={`${mark} ${className} drop-shadow-[0_0_6px_rgba(234,201,92,0.45)] drop-shadow-[0_2px_12px_rgba(212,175,55,0.4)]`}
+    />
   );
 }
 
