@@ -5,6 +5,7 @@ import {
   normalizeFixturesFromEspn,
   dateParam,
 } from "@/lib/fixtures";
+import { fetchBbcFixtures, mergeFixtures } from "@/lib/fixtures-bbc";
 
 const BROWSER_HEADERS = {
   "User-Agent":
@@ -51,12 +52,26 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const settled = await Promise.allSettled(
-    slugs.map((slug) => fetchLeague(slug, date))
-  );
-  const fixtures = settled
+  const [espnResult, bbcResult] = await Promise.all([
+    Promise.allSettled(slugs.map((slug) => fetchLeague(slug, date))),
+    fetchBbcFixtures(date).then(
+      (v) => ({ ok: true as const, value: v }),
+      (e) => ({ ok: false as const, error: e as Error })
+    ),
+  ]);
+
+  const espnFixtures = espnResult
     .flatMap((r) => (r.status === "fulfilled" ? r.value : []))
     .sort((a, b) => a.kickoff.localeCompare(b.kickoff));
+
+  const merged = mergeFixtures(
+    espnFixtures,
+    bbcResult.ok ? bbcResult.value : []
+  );
+
+  const fixtures = league
+    ? merged.filter((f) => f.league === league)
+    : merged;
 
   const next = NextResponse.json({ fixtures, fetchedAt: new Date().toISOString() });
   next.headers.set(
