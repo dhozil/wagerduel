@@ -589,6 +589,7 @@ function Footer() {
             </h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li><Link href="/play" className="hover:text-gold transition-colors">Play</Link></li>
+              <li><Link href="/fixtures" className="hover:text-gold transition-colors">Fixtures</Link></li>
               <li><a href="#how-it-works" className="hover:text-gold transition-colors">How It Works</a></li>
               <li><a href="#rules" className="hover:text-gold transition-colors">Rules</a></li>
             </ul>

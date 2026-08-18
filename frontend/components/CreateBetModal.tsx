@@ -22,7 +22,22 @@ function defaultUrlFor(date: string): string {
   return date ? `https://www.bbc.com/sport/football/scores-fixtures/${date}` : "";
 }
 
-export function CreateBetModal() {
+interface CreateBetModalProps {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  initialValues?: {
+    gameDate?: string;
+    team1?: string;
+    team2?: string;
+    resolutionUrl?: string;
+  } | null;
+}
+
+export function CreateBetModal({
+  open,
+  onOpenChange,
+  initialValues,
+}: CreateBetModalProps) {
   const { isConnected, address, isLoading } = useWallet();
   const { createBet, isCreating, isSuccess } = useCreateBet();
   const { data: balance = 0 } = useBalance(address);
@@ -31,6 +46,8 @@ export function CreateBetModal() {
     !!address && !!owner && address.toLowerCase() === owner.toLowerCase();
 
   const [isOpen, setIsOpen] = useState(false);
+  const isControlled = open !== undefined;
+  const effectiveOpen = isControlled ? !!open : isOpen;
   const [gameDate, setGameDate] = useState("");
   const [team1, setTeam1] = useState("");
   const [team2, setTeam2] = useState("");
@@ -50,10 +67,10 @@ export function CreateBetModal() {
 
   // Auto-close modal when wallet disconnects
   useEffect(() => {
-    if (!isConnected && isOpen && !isCreating) {
-      setIsOpen(false);
+    if (!isConnected && effectiveOpen && !isCreating) {
+      handleOpenChange(false);
     }
-  }, [isConnected, isOpen, isCreating]);
+  }, [isConnected, effectiveOpen, isCreating]);
 
   const parseAmountWei = (): bigint | null => {
     const trimmed = amount.trim();
@@ -151,32 +168,61 @@ export function CreateBetModal() {
     setErrors({ gameDate: "", team1: "", team2: "", side: "", amount: "", resolutionUrl: "" });
   };
 
-  const handleOpenChange = (open: boolean) => {
-    if (!open && !isCreating) {
+  const handleOpenChange = (next: boolean) => {
+    if (!next && !isCreating) {
       resetForm();
     }
-    setIsOpen(open);
+    if (isControlled) {
+      onOpenChange?.(next);
+    } else {
+      setIsOpen(next);
+    }
   };
+
+  // Prefill the form when the modal opens with a preselected fixture.
+  useEffect(() => {
+    if (effectiveOpen && initialValues) {
+      const date = initialValues.gameDate ?? "";
+      setGameDate(date);
+      setTeam1(initialValues.team1 ?? "");
+      setTeam2(initialValues.team2 ?? "");
+      setResolutionUrl(
+        initialValues.resolutionUrl ?? (date ? defaultUrlFor(date) : "")
+      );
+      setErrors({
+        gameDate: "",
+        team1: "",
+        team2: "",
+        side: "",
+        amount: "",
+        resolutionUrl: "",
+      });
+    }
+  }, [effectiveOpen, initialValues]);
 
   useEffect(() => {
     if (isSuccess) {
       resetForm();
-      setIsOpen(false);
+      handleOpenChange(false);
     }
+    // handleOpenChange changes identity each render; reflect only on success.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSuccess]);
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
-        <Button
-          variant="gradient"
-          disabled={!isConnected || !address || isLoading || isOwner}
-          title={isOwner ? "The contract owner cannot place bets" : undefined}
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Create Bet
-        </Button>
-      </DialogTrigger>
+    <Dialog open={effectiveOpen} onOpenChange={handleOpenChange}>
+      {!isControlled && (
+        <DialogTrigger asChild>
+          <Button
+            variant="gradient"
+            disabled={!isConnected || !address || isLoading || isOwner}
+            title={isOwner ? "The contract owner cannot place bets" : undefined}
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Create Bet
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="brand-card border-2 sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold">Create Head-to-Head Bet</DialogTitle>
@@ -405,7 +451,7 @@ export function CreateBetModal() {
               type="button"
               variant="secondary"
               className="flex-1"
-              onClick={() => setIsOpen(false)}
+              onClick={() => handleOpenChange(false)}
               disabled={isCreating}
             >
               Cancel

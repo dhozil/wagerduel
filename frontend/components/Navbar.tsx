@@ -11,6 +11,7 @@ import { Logo, LogoMark } from "./Logo";
 
 const NAV_LINKS = [
   { href: "/play", label: "Play" },
+  { href: "/fixtures", label: "Fixtures" },
   { href: "/#how-it-works", label: "How It Works" },
   { href: "/profile", label: "Profile" },
 ];
