@@ -27,11 +27,11 @@ contracts/          # Python intelligent contracts
 tests/
   direct/           # Fast in-memory tests with web/LLM mocks
   integration/      # Full tests against GenLayer Studio
-frontend/           # Next.js 15 app (TypeScript, TanStack Query, Radix UI)
-deploy/             # TypeScript deployment scripts
+frontend/           # Next.js 16 app (TypeScript, TanStack Query, Radix UI)
+deploy/             # Python + TypeScript deployment scripts
 ```
 
-**Frontend stack**: Next.js 15, React 19, TypeScript, Tailwind CSS, TanStack Query, Wagmi/Viem, MetaMask wallet integration.
+**Frontend stack**: Next.js 16, React 19, TypeScript, Tailwind CSS, TanStack Query, Wagmi/Viem, browser wallets (EIP-1193: MetaMask, Rabby, Coinbase Wallet, Trust Wallet).
 
 ## Development Workflow
 
@@ -113,8 +113,8 @@ The GenVM linter catches contract issues before deployment:
 
 ## Frontend Patterns
 
-- Contract interactions: `frontend/lib/contracts/FootballBets.ts`
-- React hooks: `frontend/lib/hooks/useFootballBets.ts`
+- Contract interactions: `frontend/lib/contracts/P2PGambling.ts`
+- React hooks: `frontend/lib/hooks/useP2PGambling.ts`
 - Wallet context: `frontend/lib/genlayer/WalletProvider.tsx`
 - GenLayer client: `frontend/lib/genlayer/client.ts`
 
