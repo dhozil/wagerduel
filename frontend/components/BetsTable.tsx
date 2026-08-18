@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, Trophy, Clock, AlertCircle, Users, ExternalLink } from "lucide-react";
+import { Loader2, Trophy, Clock, AlertCircle, Users, ExternalLink, Copy } from "lucide-react";
 import {
   useBets,
   useJoinBet,
@@ -13,6 +13,7 @@ import {
 } from "@/lib/hooks/useP2PGambling";
 import { useWallet } from "@/lib/genlayer/wallet";
 import { error } from "@/lib/utils/toast";
+import { copyText, formatWei } from "@/lib/utils";
 import { AddressDisplay } from "./AddressDisplay";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -250,12 +251,6 @@ function oppositeSide(creatorSide: string): string {
   return creatorSide === "1" ? "2" : "1";
 }
 
-function formatWei(value: number): string {
-  if (!value) return "0";
-  if (value >= 1e18) return `${(value / 1e18).toFixed(4)} GEN`;
-  return `${value} wei`;
-}
-
 const FEE_BPS = 200;
 
 function feeOf(amount: number): number {
@@ -268,6 +263,11 @@ function payoutOf(amount: number): number {
 
 function truncateUrl(url: string): string {
   return url.replace(/^https?:\/\//, "").slice(0, 42) + (url.length > 42 ? "…" : "");
+}
+
+function truncateBetId(id: string): string {
+  if (id.length <= 28) return id;
+  return `${id.slice(0, 26)}…`;
 }
 
 const SETTLEMENT_WINDOW_DAYS = 14;
@@ -415,6 +415,14 @@ function BetRow({
             {truncateUrl(bet.resolution_url)}
           </a>
         )}
+        <button
+          onClick={() => copyText(bet.id)}
+          title="Copy bet ID — share it with your rival"
+          className="mt-1 inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-gold transition-colors cursor-pointer"
+        >
+          <Copy className="w-3 h-3" />
+          <code className="font-mono">{truncateBetId(bet.id)}</code>
+        </button>
       </td>
       <td className="px-4 py-4">
         <span className="text-sm font-semibold text-accent">

@@ -10,7 +10,7 @@ import { GENLAYER_NETWORK } from "@/lib/genlayer/client";
 import { Logo, LogoMark } from "./Logo";
 
 const NAV_LINKS = [
-  { href: "/#play", label: "Play" },
+  { href: "/play", label: "Play" },
   { href: "/#how-it-works", label: "How It Works" },
   { href: "/profile", label: "Profile" },
 ];

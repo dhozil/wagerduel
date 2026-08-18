@@ -71,6 +71,27 @@ export function useBets() {
 }
 
 /**
+ * Hook to fetch a single bet by its ID (e.g. "2026-08-30_spain_italy").
+ * Returns null when the bet does not exist or the id is empty.
+ */
+export function useBetById(betId: string | null) {
+  const contract = useP2PGamblingContract();
+
+  return useQuery<Bet | null, Error>({
+    queryKey: ["bet", betId],
+    queryFn: () => {
+      if (!contract || !betId) {
+        return Promise.resolve(null);
+      }
+      return contract.getBet(betId);
+    },
+    retry: false,
+    staleTime: 5000,
+    enabled: !!contract && !!betId,
+  });
+}
+
+/**
  * Hook to fetch the total value locked in escrow (wei).
  */
 export function useTotalEscrow() {

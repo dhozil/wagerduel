@@ -4,13 +4,8 @@ import { useState } from "react";
 import { Wallet, Trophy, Hourglass, XCircle, Loader2, AlertCircle, Coins } from "lucide-react";
 import { useBets, useTotalEscrow, useP2PGamblingContract, useOwner, useOwnerFees, useWithdrawFees } from "@/lib/hooks/useP2PGambling";
 import { useWallet } from "@/lib/genlayer/wallet";
+import { formatWei } from "@/lib/utils";
 import { Button } from "./ui/button";
-
-function formatWei(value: number): string {
-  if (!value) return "0";
-  if (value >= 1e18) return `${(value / 1e18).toFixed(4)} GEN`;
-  return `${value} wei`;
-}
 
 export function MarketStats() {
   const contract = useP2PGamblingContract();

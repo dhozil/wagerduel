@@ -5,6 +5,7 @@ import { User, LogOut, AlertCircle, ExternalLink, Coins } from "lucide-react";
 import { useWallet } from "@/lib/genlayer/wallet";
 import { useBalance, useDeposit, useWithdraw } from "@/lib/hooks/useP2PGambling";
 import { success, error, userRejected } from "@/lib/utils/toast";
+import { formatWei } from "@/lib/utils";
 import { AddressDisplay } from "./AddressDisplay";
 import { Button } from "./ui/button";
 import {
@@ -18,14 +19,6 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
 
 const WALLET_INSTALL_URL = "https://metamask.io/download/";
-
-function formatWei(value: number): string {
-  if (!value) return "0";
-  if (value >= 1e18) {
-    return `${(value / 1e18).toLocaleString("en-US", { maximumFractionDigits: 4 })} GEN`;
-  }
-  return `${value} wei`;
-}
 
 export function AccountPanel() {
   const {

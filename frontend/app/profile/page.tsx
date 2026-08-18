@@ -32,17 +32,10 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { error } from "@/lib/utils/toast";
+import { formatWei } from "@/lib/utils";
 import type { Bet } from "@/lib/contracts/types";
 
 const WEI_PER_TOKEN = BigInt(1_000_000_000_000_000_000);
-
-function formatWei(value: number): string {
-  if (!value) return "0";
-  if (value >= 1e18) {
-    return `${(value / 1e18).toLocaleString("en-US", { maximumFractionDigits: 4 })} GEN`;
-  }
-  return `${value} wei`;
-}
 
 function parseTokens(str: string): bigint | null {
   const num = Number(str);

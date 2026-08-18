@@ -14,22 +14,14 @@ import {
   Zap,
   CircleDollarSign,
 } from "lucide-react";
+import Link from "next/link";
 import { Navbar } from "@/components/Navbar";
-import { BetsTable } from "@/components/BetsTable";
 import { MarketStats } from "@/components/MarketStats";
 import { useBets, useTotalEscrow } from "@/lib/hooks/useP2PGambling";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { WagerDuelMark } from "@/components/Logo";
-
-function formatWei(value: number): string {
-  if (!value) return "0";
-  if (value >= 1e18) {
-    const n = value / 1e18;
-    return `${n.toLocaleString("en-US", { maximumFractionDigits: 4 })} GEN`;
-  }
-  return `${value} wei`;
-}
+import { formatWei } from "@/lib/utils";
 
 /* ============================ HERO ============================ */
 
@@ -65,10 +57,10 @@ function Hero() {
             variant="gradient"
             className="h-12 px-8 text-base font-bold uppercase tracking-wider"
           >
-            <a href="#play">
+            <Link href="/play">
               Start Betting
               <ArrowRight className="w-5 h-5" />
-            </a>
+            </Link>
           </Button>
           <Button
             asChild
@@ -311,7 +303,30 @@ function PlaySection() {
       />
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
         <div className="lg:col-span-8">
-          <BetsTable />
+          <div className="brand-card brand-card-hover p-10 text-center h-full flex flex-col items-center justify-center">
+            <div className="w-16 h-16 rounded-2xl gradient-gold flex items-center justify-center mb-5">
+              <Swords className="w-8 h-8 text-[var(--primary-foreground)]" />
+            </div>
+            <h3 className="font-display font-semibold text-2xl uppercase mb-3">
+              The Arena is open
+            </h3>
+            <p className="text-muted-foreground max-w-md mx-auto leading-relaxed">
+              Browse every duel, filter to the ones you&apos;re in, or jump
+              straight into a friend&apos;s bet by entering its ID — all on one
+              dedicated page.
+            </p>
+            <Button
+              asChild
+              size="lg"
+              variant="gradient"
+              className="mt-6 h-12 px-8 text-base font-bold uppercase tracking-wider"
+            >
+              <Link href="/play">
+                Open the Arena
+                <ArrowRight className="w-5 h-5" />
+              </Link>
+            </Button>
+          </div>
         </div>
         <div className="lg:col-span-4">
           <MarketStats />
@@ -537,10 +552,10 @@ function CtaBanner() {
           variant="gradient"
           className="h-13 px-10 text-base font-bold uppercase tracking-wider"
         >
-          <a href="#play">
+          <Link href="/play">
             Enter the Arena
             <ArrowRight className="w-5 h-5" />
-          </a>
+          </Link>
         </Button>
       </div>
     </section>
@@ -573,7 +588,7 @@ function Footer() {
               Explore
             </h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><a href="#play" className="hover:text-gold transition-colors">Play</a></li>
+              <li><Link href="/play" className="hover:text-gold transition-colors">Play</Link></li>
               <li><a href="#how-it-works" className="hover:text-gold transition-colors">How It Works</a></li>
               <li><a href="#rules" className="hover:text-gold transition-colors">Rules</a></li>
             </ul>
