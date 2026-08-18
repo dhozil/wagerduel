@@ -1,0 +1,16 @@
+{
+  "name": "WagerDuel",
+  "short_name": "WagerDuel",
+  "description": "Peer-to-peer head-to-head betting on GenLayer. Double or nothing, AI-verified results.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#14120D",
+  "theme_color": "#E2B94C",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

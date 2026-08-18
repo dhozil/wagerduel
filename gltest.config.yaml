@@ -1,0 +1,25 @@
+networks:
+  default: localnet
+
+  localnet:
+    url: "http://127.0.0.1:4000/api"
+
+  studionet:
+    url: "https://studio.genlayer.com/api"
+    accounts:
+      - "${STUDIO_OWNER_PRIVATE_KEY}"
+      - "${STUDIO_PLAYER_A_PRIVATE_KEY}"
+      - "${STUDIO_PLAYER_B_PRIVATE_KEY}"
+    from: "${STUDIO_OWNER_PRIVATE_KEY}"
+
+  testnet_bradbury:
+    accounts:
+      - "${BRADBURY_OWNER_PRIVATE_KEY}"
+      - "${BRADBURY_PLAYER_A_PRIVATE_KEY}"
+      - "${BRADBURY_PLAYER_B_PRIVATE_KEY}"
+    from: "${BRADBURY_OWNER_PRIVATE_KEY}"
+
+paths:
+  contracts: "contracts"
+
+environment: .env
