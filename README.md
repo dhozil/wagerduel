@@ -1,60 +1,93 @@
-# WagerDuel
+<p align="center">
+  <img src="frontend/public/favicon.svg" width="110" height="110" alt="WagerDuel logo" />
+</p>
 
-![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
-![GenLayer](https://img.shields.io/badge/chain-GenLayer%20Studio-E2B94C)
-![Next.js](https://img.shields.io/badge/frontend-Next.js%2016-000000)
+<h1 align="center">
+  <span style="background:linear-gradient(120deg,#FBEEC7,#EAC95C 45%,#C9992E);-webkit-background-clip:text;background-clip:text;color:transparent;">WagerDuel</span>
+</h1>
 
-**Peer-to-peer head-to-head football betting on GenLayer.** Two players lock an
-equal stake in escrow, bet on opposite outcomes of a real match, and an
-AI-verified result pays the winner the pot. No oracles, no bookmakers, no house
-edge — double or nothing.
+<h3 align="center">Peer-to-peer head-to-head football betting on GenLayer</h3>
+
+<p align="center">
+  <b>Double or nothing.</b> Two players lock an equal stake, bet on opposite
+  outcomes of a real match, and an <b>AI-verified</b> result pays the winner the pot.
+</p>
+
+<p align="center">
+  <img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-green.svg" />
+  <img alt="Chain" src="https://img.shields.io/badge/chain-GenLayer%20Studio-E2B94C" />
+  <img alt="Frontend" src="https://img.shields.io/badge/frontend-Next.js%2016-000000?logo=nextdotjs" />
+  <img alt="Language" src="https://img.shields.io/badge/language-Python%203.12-3776AB?logo=python" />
+  <img alt="Tests" src="https://img.shields.io/badge/tests-97%20direct-44CC11" />
+</p>
 
 ---
 
-## What is WagerDuel
+## Highlights
 
-WagerDuel is a decentralized football betting dApp built as a **GenLayer
-Intelligent Contract** (`P2PGambling`) with a production-ready Next.js frontend.
-The contract itself reads a trusted live source on-chain, extracts the match
-result with an LLM, and has **independent validators** verify both the winner
-and the score under the [Equivalence Principle](https://docs.genlayer.com/)
-before any funds move.
+- **Real escrow, no bookmaker** — both stakes are locked on-chain until the
+  duel is settled. No oracles, no house edge, no middleman.
+- **AI-verified outcomes** — the contract reads a trusted live source, an LLM
+  extracts the result, and independent validators confirm both the winner and
+  the score before a single token moves.
+- **Fair head-to-head rules** — opponents must bet on opposite outcomes
+  (Team 1, Team 2, or Draw). A draw refunds both players.
+- **Transparent economics** — a flat **2% platform fee** is the only cost; it
+  accrues in `owner_fees` and never touches player balances or active escrow.
+- **Funds are never locked forever** — every duel has a deterministic expiry
+  refund after the match date + 14 days.
+- **Escrow-rug proof** — the deployer (owner) cannot bet, and `withdraw_fees`
+  is capped at accumulated fees, so active player stakes can never be drained.
+- **Production-grade frontend** — Next.js 16 app with MetaMask / Rabby /
+  any EIP-1193 wallet, TanStack Query, and a premium dark glass UI.
 
-Everything runs on-chain and is auditable:
+## The idea
 
-- **Balance model** — you deposit GEN into the contract and fund bets from your
-  balance. Winnings are credited to your balance and can be withdrawn anytime.
-- **Real escrow** — both stakes are locked in the contract until the duel is
-  settled, refunded, or expired.
-- **No admin control over funds** — the owner cannot bet and can only withdraw
-  the accumulated platform fee, never user balances or active escrow.
-- **Bounded settlement** — every duel has a deterministic expiry refund, so
-  escrow can never be locked forever.
+Centralized sportsbooks control odds, hold your money, and you have to trust
+them to pay out. WagerDuel inverts that: the rules live in an **intelligent
+contract** on [GenLayer](https://docs.genlayer.com/) — an AI-native blockchain —
+so everything is programmable, auditable, and enforced by consensus.
 
-## How it works
+Instead of betting against the house, you bet against another person. Two
+players, one match, one winner. Double or nothing.
+
+## How trust works on GenLayer
+
+This is the part that makes a no-oracle bookmaker possible:
+
+1. The contract fetches the live match page with `gl.nondet.web.render(...)`.
+2. An LLM extracts the result into strict JSON: `{"score": "2:1", "winner": 1}`.
+3. Under the **Equivalence Principle**, independent validators repeat the same
+   check — the leader's result is accepted only if validators agree on **both**
+   the winner **and** the exact score.
+4. The winner's balance is credited with the pot minus the 2% fee, and a
+   `BetSettled` event is emitted for on-chain auditing.
+
+Because the resolution URL is committed by the creator and must belong to a
+hardcoded allowlist of trusted hosts, the contract can never be tricked into
+reading a spoofed source.
+
+## How a duel works
 
 ```text
-  1. DEPOSIT         2. CREATE           3. JOIN              4. RESOLVE         5. COLLECT
-  ┌──────────┐      ┌─────────────┐     ┌─────────────┐      ┌────────────┐      ┌──────────┐
-  │  Player A │ ──▶ │ A locks 5 GEN │ ─▶ │ B locks 5 GEN │ ─▶ │  AI reads  │ ─▶ │ Winner   │
-  │ balance   │      │ opens duel  │     │ matches stake│     │  result +  │     │ gets pot │
-  │ + 5 GEN   │      │ (ESCROW 5)  │     │ (ESCROW 10) │     │  validators│     │ − 2% fee │
-  └──────────┘      └─────────────┘     └─────────────┘      └────────────┘      └──────────┘
+DEPOSIT ─▶ CREATE ─▶ JOIN ─▶ RESOLVE ─▶ COLLECT
+
+Player A      Player A locks 5 GEN    Player B locks 5 GEN   AI reads the live    Winner gets the pot
+funds their   and opens the duel      and matches the stake  result; validators   minus the 2% fee;
+balance       (escrow: 5 GEN)         (escrow: 10 GEN)       verify winner + score  draw refunds both
 ```
 
 1. **Deposit** — `deposit()` (payable) adds GEN to your on-chain balance.
 2. **Create** — `create_bet(game_date, team1, team2, side, resolution_url, amount)`
-   deducts your stake and opens the duel. You pick Team 1, Team 2, or Draw, and
-   commit a trusted source URL (BBC, ESPN, Sky Sports, FotMob, Goal, The
-   Guardian, UEFA, Premier League).
+   deducts your stake and opens the duel. Pick Team 1, Team 2, or Draw and commit
+   a trusted source URL (BBC, ESPN, Sky Sports, FotMob, Goal, The Guardian,
+   UEFA, Premier League).
 3. **Join** — `join_bet(bet_id, side)` locks the matching stake and seals the
-   duel. Opponents must bet on opposite outcomes.
-4. **Resolve** — anyone calls `resolve_bet(bet_id)`. The contract renders the
-   committed URL, an LLM extracts `{winner, score}`, and validators independently
-   repeat the check. Only if leader and validators agree on **both** the winner
-   and the score is the result accepted.
-5. **Collect** — the winner's balance is credited with the pot minus a flat
-   **2% platform fee**. Draws refund both players (no fee).
+   duel. Opponents must choose the opposite outcome.
+4. **Resolve** — anyone calls `resolve_bet(bet_id)`. The contract re-reads the
+   committed URL, the LLM extracts the result, and validators confirm it.
+5. **Collect** — the winner's balance is credited with the pot minus the **2%
+   platform fee**. Draws refund both players in full (no fee).
 
 Lifecycle edges:
 
@@ -68,7 +101,7 @@ Lifecycle edges:
 
 ## Contract reference
 
-Public methods (`contracts/p2p_gambling.py`):
+Contract: `contracts/p2p_gambling.py` — class `P2PGambling`.
 
 | Method | Kind | Description |
 |---|---|---|
@@ -87,20 +120,23 @@ Public methods (`contracts/p2p_gambling.py`):
 | `get_total_escrow()` | view | Total locked escrow |
 | `get_owner()` | view | Contract owner |
 
-Constants:
+**Constants**
 
-- **Platform fee** — `FEE_BPS = 200` (2%), minimum 1 wei.
-- **Settlement window** — `SETTLEMENT_WINDOW_DAYS = 14` after the match date.
-- **Trusted source hosts** — `bbc.com`, `espn.com`, `skysports.com`,
-  `fotmob.com`, `goal.com`, `theguardian.com`, `uefa.com`,
-  `premierleague.com` (and `www.` variants). Lookalike hosts are rejected.
+| Constant | Value | Meaning |
+|---|---|---|
+| `FEE_BPS` | `200` | Platform fee: 2% (minimum 1 wei) |
+| `SETTLEMENT_WINDOW_DAYS` | `14` | Days after the match date before refund eligibility |
+| `TRUSTED_SOURCE_HOSTS` | `bbc.com`, `espn.com`, `skysports.com`, `fotmob.com`, `goal.com`, `theguardian.com`, `uefa.com`, `premierleague.com` (+ `www.` variants) | Allowlist of resolution sources |
 
-On-chain events: `BetSettled(bet_id, winner, ...)`, `Withdrawal(addr)`,
-`FeesWithdrawn(addr)` — emitted on every settlement for transparent auditing.
+**Bet statuses** — `OPEN` → `JOINED` → `RESOLVED` (or `CANCELED`), with
+`EXPIRED` refunds handled deterministically.
+
+**Events** — `BetSettled(bet_id, winner, ...)`, `Withdrawal(addr)`,
+`FeesWithdrawn(addr)` are emitted on every settlement for transparent auditing.
 
 **Security properties**
 
-- Both players must bet on opposite outcomes for a fair match-up.
+- Opponents must bet on opposite outcomes for a fair match-up.
 - Resolution always re-reads the committed, creator-submitted URL — never a
   swapped or derived source.
 - Validators must match the leader on the winner **and** the score, not just a
@@ -113,13 +149,24 @@ On-chain events: `BetSettled(bet_id, winner, ...)`, `Withdrawal(addr)`,
 - Fund-conservation tests verify `total_escrow` and balances stay consistent
   through every lifecycle transition.
 
+## Tech stack
+
+| Layer | Technology |
+|---|---|
+| Blockchain | GenLayer (GenVM intelligent contracts, Equivalence Principle) |
+| Contract language | Python 3.12 (GenLayer SDK) |
+| Frontend | Next.js 16, React 19, TypeScript |
+| UI | Tailwind CSS v4, Radix UI, shadcn/ui, TanStack Query |
+| Web3 | genlayer-js, viem, wagmi (EIP-1193 wallets) |
+| Testing | pytest (direct mode), genvm-lint, gltest (integration) |
+
 ## Repository layout
 
 ```text
 contracts/
   p2p_gambling.py          # The P2PGambling intelligent contract
 tests/
-  direct/                  # Fast in-memory tests (no Studio required)
+  direct/                  # 97 fast in-memory tests (no Studio required)
   integration/             # End-to-end tests against a GenLayer backend
 frontend/                  # Next.js 16 app (TypeScript, TanStack Query, Radix UI)
 deploy/
@@ -152,7 +199,7 @@ pip install -r requirements.txt
 
 ```shell
 genvm-lint lint contracts/p2p_gambling.py   # static analysis
-pytest tests/direct/ -v                      # fast direct-mode tests
+pytest tests/direct/ -v                      # 97 fast direct-mode tests
 gltest tests/integration/ -v -s              # on-chain integration tests
 ```
 
@@ -180,13 +227,21 @@ Open http://localhost:3000/.
 The app connects through any **EVM-compatible wallet** (MetaMask, Rabby,
 Coinbase Wallet, Trust, ...) via the EIP-1193 provider. For the most reliable
 GenLayer transaction signing, use **Rabby** or **MetaMask with the GenLayer
-Snap`.
+Snap**.
 
 ## Deployed contract
 
 | Network | Address |
 |---|---|
-| GenLayer Studio | `0xC0C1F6AdEFB3ECc794fBDF3B7224e9BE95D0ac1c` |
+| GenLayer Studio (chain `61999`) | `0xC0C1F6AdEFB3ECc794fBDF3B7224e9BE95D0ac1c` |
+
+## Roadmap
+
+- Additional sports (basketball, tennis, esports)
+- More bet types (over/under, Asian handicap, correct score)
+- Multi-game parlays
+- Player leaderboards and achievements
+- Appeals / dispute escalation with higher fee tiers
 
 ## License
 

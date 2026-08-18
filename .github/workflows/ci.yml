@@ -21,6 +21,17 @@ jobs:
   test-direct:
     name: Direct Mode Tests
     runs-on: ubuntu-latest
+    env:
+      # gltest validates every ${VAR} in gltest.config.yaml at startup, even
+      # for the default localnet used by direct-mode tests. Non-empty
+      # placeholders pass config validation; real keys are only needed for
+      # integration tests, which run locally via a .env file.
+      STUDIO_OWNER_PRIVATE_KEY: "ci-placeholder"
+      STUDIO_PLAYER_A_PRIVATE_KEY: "ci-placeholder"
+      STUDIO_PLAYER_B_PRIVATE_KEY: "ci-placeholder"
+      BRADBURY_OWNER_PRIVATE_KEY: "ci-placeholder"
+      BRADBURY_PLAYER_A_PRIVATE_KEY: "ci-placeholder"
+      BRADBURY_PLAYER_B_PRIVATE_KEY: "ci-placeholder"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
