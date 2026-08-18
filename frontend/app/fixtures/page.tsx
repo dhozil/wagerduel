@@ -229,6 +229,16 @@ function FixtureCard({
   const finished = fixture.state === "post";
   const showScore = fixture.score1 !== undefined && fixture.score2 !== undefined;
 
+  const betEnabled = canCreate && !live && !finished;
+  const betLabel = live ? "Match Started" : finished ? "Match Finished" : "Create Bet";
+  const betEnabledTitle = !canCreate
+    ? "Connect your wallet to create bets"
+    : live
+      ? "This match has already started"
+      : finished
+        ? "This match has already finished"
+        : undefined;
+
   return (
     <div className="brand-card brand-card-hover p-5 flex flex-col animate-fade-in">
       {/* Top row */}
@@ -288,11 +298,11 @@ function FixtureCard({
           onClick={onCreate}
           variant="gradient"
           className="w-full"
-          disabled={!canCreate}
-          title={canCreate ? undefined : "Connect your wallet to create bets"}
+          disabled={!betEnabled}
+          title={betEnabledTitle}
         >
           <Plus className="w-4 h-4 mr-2" />
-          Create Bet
+          {betEnabled ? "Create Bet" : betLabel}
         </Button>
       </div>
     </div>
