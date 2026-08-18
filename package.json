@@ -1,5 +1,5 @@
 {
-  "name": "genlayer-project",
+  "name": "wagerduel",
   "type": "module",
   "private": true,
   "workspaces": ["frontend"],
