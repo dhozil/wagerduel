@@ -274,12 +274,24 @@ Snap**.
 
 | Network | Address |
 |---|---|
-| GenLayer Studio (chain `61999`) | `0xC0C1F6AdEFB3ECc794fBDF3B7224e9BE95D0ac1c` |
+| GenLayer Studio (chain `61999`) | `0xDFF8B9A24D5773f44ad422f32382877A504B84ec` |
+
+On-chain verification (all finalizing, ~40s/tx on studionet):
+
+- **Integration suite** — `gltest tests/integration/ -v -s --network studionet`
+  deploys **once** and runs 8 tests against a single contract with two player
+  accounts: schema, deposit/create/escrow, join + duplicate rejection, withdraw
+  & views, cancel, expiry refund, handicap create/join, handicap validation.
+- **Live smoke** — `python deploy/smoke_test_deployed.py --resolve` exercises the
+  deployed contract directly: deposit, create (with handicap), join,
+  `refund_expired` (deterministic, no sim config), and a **real AI resolve** of
+  Spain 1-0 Italy (2024-06-20) paying the winner minus the 2% fee, then owner
+  `withdraw_fees`.
 
 ## Roadmap
 
 - Additional sports (basketball, tennis, esports)
-- More bet types (over/under, Asian handicap, correct score)
+- More bet types (over/under, correct score, full Asian handicap)
 - Multi-game parlays
 - Player leaderboards and achievements
 - Appeals / dispute escalation with higher fee tiers

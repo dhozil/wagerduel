@@ -2,8 +2,22 @@
 
 Run with: gltest tests/integration/ -v -s --network <localnet|studionet>
 
-Covers the balance/escrow model: deposit -> create -> join -> resolve (fees)
--> cancel -> expiry refund, plus user withdrawal and owner fee withdrawal.
+The contract is deployed ONCE (session-scoped fixture) and all tests exercise
+that single instance with two player accounts:
+
+- default_account = contract OWNER (can never bet)
+- accounts[1]     = Alice (player A)
+- accounts[2]     = Bob   (player B)
+
+The suite is fully deterministic: it uses NO web/LLM or datetime simulation,
+because hosted networks do not honour those overrides for real transactions
+(they stay "proposing" forever). resolve_bet is therefore covered on-chain by
+`deploy/smoke_test_deployed.py --resolve` (real web + AI validators) and its
+logic by the mocked direct tests in tests/direct/.
+
+Every test asserts cumulative-state Deltas, so it is order-independent and a
+fresh per-test deploy is never needed. Bet ids are unique per test because a
+match can only host one open bet.
 """
 
 import pytest
@@ -17,63 +31,33 @@ from tests.integration.fixtures import (
     joined_bet_state,
 )
 
-BET_ID = "2024-06-20_spain_italy"
 
-
-def _resolve_context(score: str, winner: int) -> dict:
-    return {
-        "validators": [
-            {
-                "stake": 1,
-                "provider": "glsim",
-                "model": "direct",
-                "config": {},
-                "plugin": "glsim",
-                "plugin_config": {
-                    "mock_web_response": {
-                        "nondet_web_request": {
-                            RESOLUTION_URL: {
-                                "status": 200,
-                                "body": (
-                                    f"Match result: {score}. Winner: team {winner}."
-                                ),
-                            }
-                        }
-                    },
-                    "mock_response": {
-                        "response": {
-                            r".*match.result.*": (
-                                '{"score": "%s", "winner": %d}' % (score, winner)
-                            )
-                        }
-                    },
-                },
-            }
-        ]
-    }
-
-
-def _deploy():
+@pytest.fixture(scope="session")
+def contract():
     factory = get_contract_factory("P2PGambling")
-    contract = factory.deploy()
-    assert contract.get_bets(args=[]).call() == {}
-    assert contract.get_total_escrow(args=[]).call() == 0
-    return contract
+    deployed = factory.deploy()
+    assert deployed.get_bets(args=[]).call() == {}
+    assert deployed.get_total_escrow(args=[]).call() == 0
+    return deployed
 
 
-def _deposit(contract, amount, wait_interval=10000, wait_retries=30):
-    return contract.deposit(args=[]).transact(
+def _deposit(c, account, amount, wait_interval=3000, wait_retries=120):
+    return c.connect(account).deposit(args=[]).transact(
         value=amount, wait_interval=wait_interval, wait_retries=wait_retries
     )
 
 
-def _expiry_ctx():
-    return {"validators": [], "genvm_datetime": "2024-08-01T00:00:00+00:00"}
+def _snapshot(contract, alice, bob):
+    return {
+        "alice": contract.get_balance(args=[alice]).call(),
+        "bob": contract.get_balance(args=[bob]).call(),
+        "escrow": contract.get_total_escrow(args=[]).call(),
+        "fees": contract.get_owner_fees(args=[]).call(),
+    }
 
 
 @pytest.mark.integration
-def test_p2p_contract_schema():
-    contract = _deploy()
+def test_p2p_contract_schema(contract):
     methods = contract._schema["methods"]
     for m in [
         "deposit",
@@ -92,141 +76,196 @@ def test_p2p_contract_schema():
         "get_owner",
     ]:
         assert m in methods, f"missing method {m}"
+    assert contract.get_owner(args=[]).call() is not None
 
 
 @pytest.mark.integration
-def test_p2p_deposit_create_and_escrow(default_account, accounts):
-    contract = _deploy()
-    bob = accounts[1]
+def test_p2p_deposit_and_create_with_escrow(contract, default_account, accounts):
+    bet_id = "2024-06-20_england_france"
+    alice = accounts[1].address
+    before = _snapshot(contract, accounts[1].address, accounts[2].address)
 
-    dep = _deposit(contract, AMOUNT * 10)
-    assert tx_execution_succeeded(dep)
+    assert tx_execution_succeeded(_deposit(contract, accounts[1], AMOUNT * 10))
 
-    create = contract.create_bet(
-        args=["2024-06-20", "Spain", "Italy", "1", RESOLUTION_URL, AMOUNT],
+    create = contract.connect(accounts[1]).create_bet(
+        args=["2024-06-20", "England", "France", "1", RESOLUTION_URL, AMOUNT],
     ).transact()
     assert tx_execution_succeeded(create)
 
-    alice = default_account.address
-    assert contract.get_bet(args=[BET_ID]).call() == open_bet_state(alice)
-    assert contract.get_total_escrow(args=[]).call() == AMOUNT
-    assert contract.get_balance(args=[alice]).call() == AMOUNT * 9
+    after = _snapshot(contract, accounts[1].address, accounts[2].address)
+    assert contract.get_bet(args=[bet_id]).call() == open_bet_state(
+        alice, bet_id, team1="England", team2="France"
+    )
+    assert after["escrow"] == before["escrow"] + AMOUNT
+    assert after["alice"] == before["alice"] + AMOUNT * 10 - AMOUNT
 
-    # Untrusted source rejected
-    bad = contract.create_bet(
-        args=["2024-06-20", "Spain", "Italy", "1", "https://example.com/x", AMOUNT],
+    # Untrusted source is rejected (no state change)
+    bad = contract.connect(accounts[1]).create_bet(
+        args=["2024-06-20", "England", "France", "1", "https://example.com/x", AMOUNT],
     ).transact()
     assert not tx_execution_succeeded(bad)
 
 
 @pytest.mark.integration
-def test_p2p_full_resolution_flow_fees(default_account, accounts):
-    """Deposit -> create -> join -> resolve (winner minus fee; owner fee accrues)."""
-    bob = accounts[1]
-    contract = _deploy()
+def test_p2p_join_and_duplicate_join_rejected(contract, default_account, accounts):
+    bet_id = "2024-06-21_germany_portugal"
+    alice = accounts[1]
+    bob = accounts[2]
+    before = _snapshot(contract, alice.address, bob.address)
 
-    assert tx_execution_succeeded(_deposit(contract, AMOUNT * 10))
-    assert tx_execution_succeeded(contract.connect(bob).deposit(args=[]).transact(
-        value=AMOUNT * 10
-    ))
+    assert tx_execution_succeeded(_deposit(contract, alice, AMOUNT * 10))
+    assert tx_execution_succeeded(_deposit(contract, bob, AMOUNT * 10))
 
-    create = contract.create_bet(
-        args=["2024-06-20", "Spain", "Italy", "1", RESOLUTION_URL, AMOUNT],
-    ).transact()
-    assert tx_execution_succeeded(create)
+    assert tx_execution_succeeded(contract.connect(alice).create_bet(
+        args=["2024-06-21", "Germany", "Portugal", "1", RESOLUTION_URL, AMOUNT],
+    ).transact())
 
     bob_contract = contract.connect(bob)
-    join = bob_contract.join_bet(args=[BET_ID, "2"]).transact()
+    join = bob_contract.join_bet(args=[bet_id, "2"]).transact()
     assert tx_execution_succeeded(join)
 
-    alice = default_account.address
-    assert contract.get_bet(args=[BET_ID]).call() == joined_bet_state(
-        alice, bob.address
+    assert contract.get_bet(args=[bet_id]).call() == joined_bet_state(
+        alice.address, bob.address, bet_id, team1="Germany", team2="Portugal"
     )
-    assert contract.get_total_escrow(args=[]).call() == AMOUNT * 2
+    after = _snapshot(contract, alice.address, bob.address)
+    assert after["escrow"] == before["escrow"] + AMOUNT * 2
+    assert after["bob"] == before["bob"] + AMOUNT * 10 - AMOUNT
 
-    resolve = bob_contract.resolve_bet(args=[BET_ID]).transact(
-        transaction_context=_resolve_context("1:0", 1),
-        wait_interval=10000,
-        wait_retries=30,
-    )
-    assert tx_execution_succeeded(resolve)
-
-    bet = contract.get_bet(args=[BET_ID]).call()
-    assert bet["status"] == "RESOLVED"
-    assert bet["winner"] == alice  # Spain (team 1) won; Alice bet team 1
-    assert contract.get_total_escrow(args=[]).call() == 0
-
-    pot = AMOUNT * 2
-    assert contract.get_owner_fees(args=[]).call() == pot * 200 // 10000
+    # Third player cannot join anymore (not OPEN)
+    third = contract.connect(accounts[2])
+    dup = third.join_bet(args=[bet_id, "2"]).transact()
+    assert not tx_execution_succeeded(dup)
 
 
 @pytest.mark.integration
-def test_p2p_user_withdraw_and_owner_fee_withdraw(default_account, accounts):
-    contract = _deploy()
-    bob = accounts[1]
+def test_p2p_withdraw_and_views(contract, default_account, accounts):
+    alice = accounts[1]
+    before = _snapshot(contract, alice.address, accounts[2].address)
 
-    assert tx_execution_succeeded(_deposit(contract, AMOUNT * 10))
-    assert tx_execution_succeeded(contract.connect(bob).deposit(args=[]).transact(
-        value=AMOUNT * 10
-    ))
-
-    # Create + join + resolve so a fee accrues
-    assert tx_execution_succeeded(
-        contract.create_bet(
-            args=["2024-06-20", "Spain", "Italy", "1", RESOLUTION_URL, AMOUNT]
-        ).transact()
-    )
-    bob_contract = contract.connect(bob)
-    assert tx_execution_succeeded(
-        bob_contract.join_bet(args=[BET_ID, "2"]).transact()
-    )
-    assert tx_execution_succeeded(
-        bob_contract.resolve_bet(args=[BET_ID]).transact(
-            transaction_context=_resolve_context("1:0", 1),
-            wait_interval=10000,
-            wait_retries=30,
-        )
+    assert tx_execution_succeeded(_deposit(contract, alice, AMOUNT * 10))
+    assert contract.get_balance(args=[alice.address]).call() == (
+        before["alice"] + AMOUNT * 10
     )
 
-    # User withdraws part of their balance
-    wd = contract.withdraw(args=[AMOUNT]).transact()
+    wd = contract.connect(alice).withdraw(args=[AMOUNT]).transact()
     assert tx_execution_succeeded(wd)
+    assert contract.get_balance(args=[alice.address]).call() == (
+        before["alice"] + AMOUNT * 9
+    )
 
-    # Owner withdraws the accumulated fees
-    wf = contract.withdraw_fees(args=[]).transact()
-    assert tx_execution_succeeded(wf)
-    assert contract.get_owner_fees(args=[]).call() == 0
+    # Views expose aggregated escrow/fees/bets consistently
+    assert contract.get_owner_fees(args=[]).call() == before["fees"]
+    all_bets = contract.get_bets(args=[]).call()
+    assert isinstance(all_bets, dict)
+    for bet in all_bets.values():
+        assert bet["status"] in ("OPEN", "JOINED", "RESOLVED", "CANCELED")
 
 
 @pytest.mark.integration
-def test_p2p_expiry_refund(default_account, accounts):
-    """After the settlement deadline, refund_expired returns both stakes."""
-    bet_id = "2024-06-20_spain_italy"
-    bob = accounts[1]
-    contract = _deploy()
+def test_p2p_cancel_refunds_open_bet(contract, default_account, accounts):
+    bet_id = "2024-06-30_sweden_norway"
+    alice = accounts[1]
+    before = _snapshot(contract, alice.address, accounts[2].address)
 
-    assert tx_execution_succeeded(_deposit(contract, AMOUNT * 10))
-    assert tx_execution_succeeded(contract.connect(bob).deposit(args=[]).transact(
-        value=AMOUNT * 10
-    ))
-    assert tx_execution_succeeded(
-        contract.create_bet(
-            args=["2024-06-20", "Spain", "Italy", "1", RESOLUTION_URL, AMOUNT]
-        ).transact()
-    )
+    assert tx_execution_succeeded(_deposit(contract, alice, AMOUNT * 5))
+    assert tx_execution_succeeded(contract.connect(alice).create_bet(
+        args=["2024-06-30", "Sweden", "Norway", "2", RESOLUTION_URL, AMOUNT]
+    ).transact())
+    mid = _snapshot(contract, alice.address, accounts[2].address)
+    assert mid["escrow"] == before["escrow"] + AMOUNT
+    assert mid["alice"] == before["alice"] + AMOUNT * 5 - AMOUNT
+
+    cancel = contract.connect(alice).cancel_bet(args=[bet_id]).transact()
+    assert tx_execution_succeeded(cancel)
+
+    after = _snapshot(contract, alice.address, accounts[2].address)
+    bet = contract.get_bet(args=[bet_id]).call()
+    assert bet["status"] == "CANCELED"
+    assert after["escrow"] == before["escrow"]
+    assert after["alice"] == before["alice"] + AMOUNT * 5
+
+    # Only the creator can cancel, and only while OPEN
+    assert not tx_execution_succeeded(contract.cancel_bet(args=[bet_id]).transact())
+
+
+@pytest.mark.integration
+def test_p2p_expiry_refund(contract, default_account, accounts):
+    """After the settlement deadline, refund_expired returns both stakes."""
+    bet_id = "2024-06-23_netherlands_belgium"
+    alice = accounts[1]
+    bob = accounts[2]
+    before = _snapshot(contract, alice.address, bob.address)
+
+    assert tx_execution_succeeded(_deposit(contract, alice, AMOUNT * 10))
+    assert tx_execution_succeeded(_deposit(contract, bob, AMOUNT * 10))
+    assert tx_execution_succeeded(contract.connect(alice).create_bet(
+        args=["2024-06-23", "Netherlands", "Belgium", "1", RESOLUTION_URL, AMOUNT]
+    ).transact())
     bob_contract = contract.connect(bob)
     assert tx_execution_succeeded(bob_contract.join_bet(args=[bet_id, "2"]).transact())
 
     refund = contract.refund_expired(args=[bet_id]).transact(
-        transaction_context=_expiry_ctx(),
-        wait_interval=10000,
-        wait_retries=30,
+        wait_interval=3000,
+        wait_retries=120,
     )
     assert tx_execution_succeeded(refund)
 
     bet = contract.get_bet(args=[bet_id]).call()
     assert bet["status"] == "RESOLVED"
     assert bet["real_winner"] == "REFUND"
-    assert contract.get_total_escrow(args=[]).call() == 0
-    assert contract.get_owner_fees(args=[]).call() == 0  # no fee on refund
+
+    after = _snapshot(contract, alice.address, bob.address)
+    assert after["escrow"] == before["escrow"]  # stakes fully returned
+    assert after["fees"] == before["fees"]  # no fee on refund
+
+
+@pytest.mark.integration
+def test_p2p_handicap_create_and_join(contract, default_account, accounts):
+    """Handicap is stored on-chain and exposed via get_bet."""
+    bet_id = "2024-06-24_mexico_poland"
+    alice = accounts[1].address
+    bob = accounts[2]
+
+    assert tx_execution_succeeded(_deposit(contract, accounts[1], AMOUNT * 10))
+    assert tx_execution_succeeded(_deposit(contract, bob, AMOUNT * 10))
+
+    create = contract.connect(accounts[1]).create_bet(
+        args=["2024-06-24", "Mexico", "Poland", "1", RESOLUTION_URL, AMOUNT, 2],
+    ).transact()
+    assert tx_execution_succeeded(create)
+
+    assert contract.get_bet(args=[bet_id]).call() == open_bet_state(
+        alice, bet_id, 2, team1="Mexico", team2="Poland"
+    )
+
+    join = contract.connect(bob).join_bet(args=[bet_id, "2"]).transact()
+    assert tx_execution_succeeded(join)
+    assert contract.get_bet(args=[bet_id]).call()["status"] == "JOINED"
+
+
+@pytest.mark.integration
+def test_p2p_handicap_draw_side_and_range_rejected(contract, default_account, accounts):
+    """Draw side with handicap and out-of-range handicap both revert."""
+    alice = accounts[1]
+    assert tx_execution_succeeded(_deposit(contract, alice, AMOUNT * 20))
+
+    # Draw side + handicap -> revert
+    draw_bad = contract.connect(alice).create_bet(
+        args=["2024-06-25", "Egypt", "Ghana", "0", RESOLUTION_URL, AMOUNT, 2],
+    ).transact()
+    assert not tx_execution_succeeded(draw_bad)
+
+    # Out-of-range handicap -> revert
+    range_bad = contract.connect(alice).create_bet(
+        args=["2024-06-26", "Nigeria", "Cameroon", "1", RESOLUTION_URL, AMOUNT, 5],
+    ).transact()
+    assert not tx_execution_succeeded(range_bad)
+
+    # Negative handicap is allowed and stored correctly (Team 1 gets the voor)
+    negative_ok = contract.connect(alice).create_bet(
+        args=["2024-06-27", "Ecuador", "Chile", "1", RESOLUTION_URL, AMOUNT, -2],
+    ).transact()
+    assert tx_execution_succeeded(negative_ok)
+    assert contract.get_bet(args=["2024-06-27_ecuador_chile"]).call()[
+        "handicap_halves"
+    ] == -2
