@@ -250,7 +250,7 @@ export function BetsGrid() {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {visibleBets.map((bet) => (
             <BetCard
               key={bet.id}
@@ -506,12 +506,12 @@ function BetCard({
 
   return (
     <div
-      className={`brand-card brand-card-hover p-5 flex flex-col animate-fade-in ${
+      className={`brand-card brand-card-hover p-4 flex flex-col animate-fade-in ${
         expiredJoined ? "border-amber-500/40" : ""
       }`}
     >
       {/* Top row: status + copy ID */}
-      <div className="flex items-center justify-between gap-2 mb-4">
+      <div className="flex items-center justify-between gap-2 mb-2.5">
         {statusBadge(bet.status)}
         <button
           onClick={() => {
@@ -528,29 +528,29 @@ function BetCard({
         </button>
       </div>
 
-      {/* Teams */}
-      <div className="text-center space-y-2">
-        <div className="flex justify-center">
-          <TeamCrest name={bet.team1} logo={crest1} />
+      {/* Teams + crests */}
+      <div className="flex items-center justify-center gap-2.5 py-1">
+        <TeamCrest name={bet.team1} logo={crest1} size={28} />
+        <div className="flex-1 min-w-0 text-right font-display font-semibold text-base truncate">
+          {bet.team1}
         </div>
-        <div className="font-display font-bold text-lg truncate">{bet.team1}</div>
-        <div className="flex items-center justify-center gap-2 text-xs uppercase tracking-widest text-muted-foreground">
-          <Swords className="w-3.5 h-3.5 text-gold" />
+        <div className="inline-flex items-center gap-1 rounded-full border border-gold/40 bg-gold/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-gold shrink-0">
+          <Swords className="w-3 h-3" />
           vs
         </div>
-        <div className="flex justify-center">
-          <TeamCrest name={bet.team2} logo={crest2} />
+        <div className="flex-1 min-w-0 font-display font-semibold text-base truncate">
+          {bet.team2}
         </div>
-        <div className="font-display font-bold text-lg truncate">{bet.team2}</div>
+        <TeamCrest name={bet.team2} logo={crest2} size={28} />
       </div>
 
       {/* Handicap line */}
       {(() => {
         const voor = handicapLabel(bet);
         return voor ? (
-          <div className="mt-3 text-center">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-gold/30 bg-gold/10 px-3 py-1 text-xs font-semibold text-gold">
-              <Target className="w-3 h-3" />
+          <div className="mt-1.5 text-center">
+            <span className="inline-flex items-center gap-1 rounded-full border border-gold/30 bg-gold/10 px-2 py-0.5 text-[10px] font-semibold text-gold">
+              <Target className="w-2.5 h-2.5" />
               Voor: {voor}
             </span>
           </div>
@@ -558,69 +558,74 @@ function BetCard({
       })()}
 
       {/* Meta grid */}
-      <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-        <div>
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-            Stake (each)
-          </div>
-          <div className="font-bold text-accent">{formatWei(bet.amount)}</div>
+      <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            Stake
+          </span>
+          <span className="font-bold text-accent truncate">
+            {formatWei(bet.amount)}
+          </span>
         </div>
-        <div>
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-            Match date
-          </div>
-          <div className="font-semibold">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            Date
+          </span>
+          <span className="font-semibold text-right">
             {bet.game_date}
             {kickoffLabel ? (
-              <span className="block text-[11px] text-muted-foreground">
+              <span className="block text-[10px] text-muted-foreground">
                 {kickoffLabel}
               </span>
             ) : null}
-          </div>
+          </span>
         </div>
-        <div>
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-            Creator side
-          </div>
-          <div className="font-semibold">{sideName(bet.creator_side, bet)}</div>
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            Creator
+          </span>
+          <span className="font-semibold text-right">
+            {sideName(bet.creator_side, bet)}
+          </span>
         </div>
-        <div>
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-            Opponent side
-          </div>
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            Opponent
+          </span>
           {bet.opponent_side ? (
-            <div className="font-semibold">{sideName(bet.opponent_side, bet)}</div>
+            <span className="font-semibold text-right">
+              {sideName(bet.opponent_side, bet)}
+            </span>
           ) : (
-            <div className="text-muted-foreground italic">Waiting...</div>
+            <span className="text-muted-foreground italic text-right">
+              Waiting...
+            </span>
           )}
         </div>
       </div>
 
       {/* Players */}
-      <div className="mt-4 space-y-1.5 text-xs">
-        <div className="flex items-center gap-2">
-          <span className="text-muted-foreground">Creator</span>
-          <AddressDisplay address={bet.creator} maxLength={8} />
-          {isCreator && (
-            <Badge variant="secondary" className="text-[10px]">
-              You
-            </Badge>
-          )}
-        </div>
+      <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
+        <span className="text-[10px] uppercase tracking-wider">Creator</span>
+        <AddressDisplay address={bet.creator} maxLength={8} />
+        {isCreator && (
+          <Badge variant="secondary" className="text-[10px]">
+            You
+          </Badge>
+        )}
+        <span className="text-muted-foreground">&#8594;</span>
+        <span className="text-[10px] uppercase tracking-wider">Opponent</span>
         {bet.opponent && bet.opponent !== "0x0000000000000000000000000000000000000000" ? (
-          <div className="flex items-center gap-2">
-            <span className="text-muted-foreground">Opponent</span>
+          <>
             <AddressDisplay address={bet.opponent} maxLength={8} />
             {isOpponent && (
               <Badge variant="secondary" className="text-[10px]">
                 You
               </Badge>
             )}
-          </div>
+          </>
         ) : (
-          <div className="text-muted-foreground italic">
-            Waiting for an opponent...
-          </div>
+          <span className="italic">Waiting for an opponent...</span>
         )}
       </div>
 
@@ -630,7 +635,7 @@ function BetCard({
           href={bet.resolution_url}
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-3 inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-gold transition-colors"
+          className="mt-2 inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-gold transition-colors"
         >
           <ExternalLink className="w-3 h-3" />
           {truncateUrl(bet.resolution_url)}
@@ -639,7 +644,7 @@ function BetCard({
 
       {/* Resolved outcome */}
       {bet.status === "RESOLVED" && (
-        <div className="mt-3 rounded-lg felt-panel px-3 py-2 text-xs space-y-0.5">
+        <div className="mt-2.5 rounded-lg felt-panel px-2.5 py-1.5 text-[11px] space-y-0.5">
           {bet.real_winner === "REFUND" ? (
             <div className="text-muted-foreground">
               Refunded (settlement window passed)
@@ -650,7 +655,7 @@ function BetCard({
                 Score {bet.real_score} —{" "}
                 <span className="text-yellow-400 font-semibold">Draw</span>
               </div>
-              <div className="text-[11px] text-muted-foreground">
+              <div className="text-[10px] text-muted-foreground">
                 Both stakes refunded, no fee
               </div>
             </>
@@ -662,7 +667,7 @@ function BetCard({
                   {sideName(bet.real_winner, bet)} {bet.real_score}
                 </span>
               </div>
-              <div className="text-[11px] text-muted-foreground">
+              <div className="text-[10px] text-muted-foreground">
                 Payout {formatWei(payoutOf(bet.amount))} ·{" "}
                 <span className="text-gold">
                   fee {formatWei(feeOf(bet.amount))}
@@ -674,7 +679,7 @@ function BetCard({
       )}
 
       {expiredJoined && (
-        <div className="mt-2 flex items-center gap-1.5 text-[11px] text-amber-400">
+        <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-amber-400">
           <Clock className="w-3 h-3" />
           Settlement window passed — refund available
         </div>
@@ -682,7 +687,7 @@ function BetCard({
 
       {/* Action */}
       {action && (
-        <div className="mt-4 pt-4 border-t border-white/10">{action}</div>
+        <div className="mt-3 pt-3 border-t border-white/10">{action}</div>
       )}
     </div>
   );

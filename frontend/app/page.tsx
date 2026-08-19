@@ -17,7 +17,12 @@ import {
 import Link from "next/link";
 import { Navbar } from "@/components/Navbar";
 import { MarketStats } from "@/components/MarketStats";
+import { TeamCrest } from "@/components/TeamCrest";
 import { useBets, useTotalEscrow } from "@/lib/hooks/useP2PGambling";
+import {
+  useMatchGates,
+  findFixtureForBet,
+} from "@/lib/hooks/useFixtureStatus";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { WagerDuelMark } from "@/components/Logo";
@@ -160,6 +165,7 @@ function LiveDuelBadge() {
 
 function LiveDuelBody() {
   const { data: bets } = useBets();
+  const { byDate } = useMatchGates(bets);
   const live = (bets || []).find(
     (b) => b.status === "OPEN" || b.status === "JOINED"
   );
@@ -180,11 +186,14 @@ function LiveDuelBody() {
   }
 
   const statusLabel = live.status === "JOINED" ? "Joined" : "Open";
+  const fx = findFixtureForBet(byDate.get(live.game_date), live);
 
   return (
     <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
       <div className="brand-card rounded-2xl p-4 text-center">
-        <div className="text-2xl mb-1">🔥</div>
+        <div className="flex justify-center mb-2">
+          <TeamCrest name={live.team1} logo={fx?.logo1} size={44} />
+        </div>
         <div className="font-display font-semibold text-lg truncate">{live.team1}</div>
         <div className="text-xs text-muted-foreground mt-1 truncate" title={live.creator}>
           by {shortAddr(live.creator)}
@@ -202,7 +211,9 @@ function LiveDuelBody() {
       </div>
 
       <div className="brand-card rounded-2xl p-4 text-center">
-        <div className="text-2xl mb-1">❄️</div>
+        <div className="flex justify-center mb-2">
+          <TeamCrest name={live.team2} logo={fx?.logo2} size={44} />
+        </div>
         <div className="font-display font-semibold text-lg truncate">{live.team2}</div>
         <div className="text-xs text-muted-foreground mt-1 truncate" title={live.opponent}>
           {live.status === "JOINED"
