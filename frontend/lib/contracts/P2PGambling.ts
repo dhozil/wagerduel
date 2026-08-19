@@ -22,7 +22,7 @@ class P2PGambling {
     address?: string | null,
     studioUrl?: string
   ) {
-    this.contractAddress = contractAddress as `0x${string}`;
+    this.contractAddress = contractAddress.trim() as `0x${string}`;
     this.studioUrl = studioUrl;
 
     const config: any = {

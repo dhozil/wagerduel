@@ -60,7 +60,9 @@ export function getContractAddress(): string {
     // Return empty string during build, error will be shown in UI during runtime
     return "";
   }
-  return address;
+  // Guard against accidental whitespace (trailing newline/space in env vars
+  // breaks the GenLayer RPC's strict address validation).
+  return address.trim();
 }
 
 /**
