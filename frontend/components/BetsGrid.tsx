@@ -26,6 +26,7 @@ import { useWallet } from "@/lib/genlayer/wallet";
 import { error } from "@/lib/utils/toast";
 import { copyText, formatWei } from "@/lib/utils";
 import { AddressDisplay } from "./AddressDisplay";
+import { TeamCrest } from "./TeamCrest";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import {
@@ -72,6 +73,13 @@ export function BetsGrid() {
       new Date(),
       findFixtureForBet(dateFixtures ?? [], bet)
     );
+  };
+
+  // Reuse the same fixture feed to decorate bets with the team crests shown on
+  // the fixtures page. Unknown/custom teams get the blank placeholder.
+  const crestFor = (bet: Bet, which: "home" | "away"): string | undefined => {
+    const fx = findFixtureForBet(byDate.get(bet.game_date), bet);
+    return fx ? (which === "home" ? fx.logo1 : fx.logo2) : undefined;
   };
 
   const handleJoin = (bet: Bet) => {
@@ -251,6 +259,8 @@ export function BetsGrid() {
               onRefundExpired={() => handleRefundExpired(bet)}
               expired={isExpired(bet.game_date)}
               gate={matchGate(bet)}
+              crest1={crestFor(bet, "home")}
+              crest2={crestFor(bet, "away")}
               isOwner={isOwner}
               busy={isJoining || isResolving || isCanceling || isRefunding}
               busyTarget={
@@ -307,6 +317,8 @@ interface BetCardProps {
   onRefundExpired: () => void;
   expired: boolean;
   gate: MatchGate;
+  crest1?: string;
+  crest2?: string;
   isOwner: boolean;
   busy: boolean;
   busyTarget: string | null;
@@ -323,6 +335,8 @@ function BetCard({
   onRefundExpired,
   expired,
   gate,
+  crest1,
+  crest2,
   isOwner,
   busy,
   busyTarget,
@@ -502,11 +516,17 @@ function BetCard({
       </div>
 
       {/* Teams */}
-      <div className="text-center space-y-1">
+      <div className="text-center space-y-2">
+        <div className="flex justify-center">
+          <TeamCrest name={bet.team1} logo={crest1} />
+        </div>
         <div className="font-display font-bold text-lg truncate">{bet.team1}</div>
         <div className="flex items-center justify-center gap-2 text-xs uppercase tracking-widest text-muted-foreground">
           <Swords className="w-3.5 h-3.5 text-gold" />
           vs
+        </div>
+        <div className="flex justify-center">
+          <TeamCrest name={bet.team2} logo={crest2} />
         </div>
         <div className="font-display font-bold text-lg truncate">{bet.team2}</div>
       </div>

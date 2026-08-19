@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { CreateBetModal } from "@/components/CreateBetModal";
+import { TeamCrest } from "@/components/TeamCrest";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -274,9 +275,9 @@ function FixtureCard({
       </div>
 
       {/* Teams + score */}
-      <TeamLogo name={fixture.team1} logo={fixture.logo1} />
+      <TeamRow name={fixture.team1} logo={fixture.logo1} />
       <div className="my-3 border-t border-white/5" />
-      <TeamLogo name={fixture.team2} logo={fixture.logo2} />
+      <TeamRow name={fixture.team2} logo={fixture.logo2} />
 
       {/* Meta */}
       <div className="mt-4 space-y-1 text-xs text-muted-foreground">
@@ -319,24 +320,10 @@ function FixtureCard({
   );
 }
 
-function TeamLogo({ name, logo }: { name: string; logo?: string }) {
+function TeamRow({ name, logo }: { name: string; logo?: string }) {
   return (
     <div className="flex items-center gap-3 min-w-0">
-      {logo ? (
-        <img
-          src={logo}
-          alt=""
-          loading="lazy"
-          className="w-8 h-8 shrink-0 object-contain"
-          onError={(e) => {
-            (e.currentTarget as HTMLImageElement).style.display = "none";
-          }}
-        />
-      ) : (
-        <div className="w-8 h-8 shrink-0 rounded-lg bg-gold/10 flex items-center justify-center">
-          <Trophy className="w-4 h-4 text-gold" />
-        </div>
-      )}
+      <TeamCrest name={name} logo={logo} />
       <div className="min-w-0">
         <div className="font-display font-semibold truncate">{name}</div>
       </div>
