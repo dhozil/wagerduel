@@ -378,22 +378,34 @@ any other words or characters, no markdown code fences, no commentary.
 
     @gl.public.write
     def refund_expired(self, bet_id: str) -> None:
-        """Deterministic escape hatch: after the deadline, refund both players.
+        """Deterministic escape hatch: after the deadline, settle any unsettled bet.
 
-        Performs NO web/LLM call, so it can never go undetermined. If the
-        result is still unavailable after the window, both stakes are returned
-        to the players' balances instead of being locked forever.
+        Performs NO web/LLM call, so it can never go undetermined:
+
+        * A JOINED bet -> both stakes are returned to the players.
+        * An OPEN bet  -> no opponent ever joined (and joining is now blocked
+          once the window closes), so the creator's stake is returned and the
+          bet is canceled instead of lingering forever.
         """
         if bet_id not in self.bets:
             raise gl.vm.UserError("Bet not found")
         bet = self.bets[bet_id]
 
-        if bet.status != STATUS_JOINED:
-            raise gl.vm.UserError("Bet must be joined by two players")
-        if not self._deadline_passed(bet.game_date):
-            raise gl.vm.UserError("Settlement deadline not reached yet")
-
-        self._refund_both(bet, "REFUND")
+        if bet.status == STATUS_OPEN:
+            if not self._deadline_passed(bet.game_date):
+                raise gl.vm.UserError("Settlement deadline not reached yet")
+            self.balances[bet.creator] = u256(
+                self.balances.get(bet.creator, 0) + bet.amount
+            )
+            self.total_escrow -= bet.amount
+            bet.status = STATUS_CANCELED
+            bet.real_winner = "REFUND"
+        elif bet.status == STATUS_JOINED:
+            if not self._deadline_passed(bet.game_date):
+                raise gl.vm.UserError("Settlement deadline not reached yet")
+            self._refund_both(bet, "REFUND")
+        else:
+            raise gl.vm.UserError("Bet must be open or joined by two players")
 
     @gl.public.write
     def withdraw_fees(self) -> None:

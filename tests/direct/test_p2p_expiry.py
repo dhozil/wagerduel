@@ -69,14 +69,41 @@ def test_refund_expired_can_be_called_by_anyone(
     assert contract.get_total_escrow() == 0
 
 
-def test_refund_expired_unjoined_reverts(direct_vm, direct_deploy, direct_alice):
-    contract = _deploy_at(direct_vm, direct_deploy, AFTER_DEADLINE)
+def test_refund_expired_open_before_deadline_reverts(
+    direct_vm, direct_deploy, direct_alice
+):
+    contract = _deploy_at(direct_vm, direct_deploy, BEFORE_DEADLINE)
     fund(direct_vm, contract, direct_alice, AMOUNT * 5)
     direct_vm.sender = direct_alice
     contract.create_bet(GAME_DATE, "Spain", "Italy", "1", RESOLUTION_URL, AMOUNT)
 
-    with direct_vm.expect_revert("Bet must be joined by two players"):
+    with direct_vm.expect_revert("Settlement deadline not reached yet"):
         contract.refund_expired(BET_ID)
+
+
+def test_refund_expired_open_after_deadline_refunds_creator(
+    direct_vm, direct_deploy, direct_alice, direct_bob
+):
+    """An OPEN bet that no one ever joined settles after the deadline: the
+    creator gets their stake back and the bet is canceled instead of
+    lingering (or being joinable) forever."""
+    contract = _deploy_at(direct_vm, direct_deploy, AFTER_DEADLINE)
+    fund(direct_vm, contract, direct_alice, AMOUNT * 5)
+    fund(direct_vm, contract, direct_bob, AMOUNT * 5)
+    direct_vm.sender = direct_alice
+    contract.create_bet(GAME_DATE, "Spain", "Italy", "1", RESOLUTION_URL, AMOUNT)
+
+    # Anyone can trigger the expiry refund; the creator gets the stake back.
+    contract.refund_expired(BET_ID)
+
+    bet = contract.get_bet(BET_ID)
+    assert bet["status"] == "CANCELED"
+    assert bet["real_winner"] == "REFUND"
+    assert contract.get_total_escrow() == 0
+    # Creator's stake returned (no fee on refund), opponent untouched.
+    assert contract.get_balance(to_hex(direct_alice)) == AMOUNT * 5
+    assert contract.get_balance(to_hex(direct_bob)) == AMOUNT * 5
+    assert contract.get_owner_fees() == 0
 
 
 def test_refund_expired_not_found_reverts(direct_vm, direct_deploy, direct_alice):
@@ -95,7 +122,7 @@ def test_refund_expired_cannot_run_twice(
 
     contract.refund_expired(BET_ID)
 
-    with direct_vm.expect_revert("Bet must be joined by two players"):
+    with direct_vm.expect_revert("Bet must be open or joined by two players"):
         contract.refund_expired(BET_ID)
 
 

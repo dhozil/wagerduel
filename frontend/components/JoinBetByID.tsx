@@ -12,6 +12,12 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { useBetById, useJoinBet } from "@/lib/hooks/useP2PGambling";
+import {
+  useMatchGates,
+  matchGateForBet,
+  findFixtureForBet,
+  type MatchGate,
+} from "@/lib/hooks/useFixtureStatus";
 import { useWallet } from "@/lib/genlayer/wallet";
 import { error, success } from "@/lib/utils/toast";
 import { copyText, formatWei } from "@/lib/utils";
@@ -42,6 +48,15 @@ export function JoinBetByID() {
   const { data: bet, isLoading, isFetching } = useBetById(searchedId);
   const { joinBet, isJoining, joiningBetId } = useJoinBet();
 
+  const { byDate } = useMatchGates(bet && bet.id ? [bet] : undefined);
+  const gate: MatchGate = bet
+    ? matchGateForBet(
+        bet.game_date,
+        new Date(),
+        findFixtureForBet(byDate.get(bet.game_date) ?? [], bet)
+      )
+    : "loading";
+
   const handleFind = (e: FormEvent) => {
     e.preventDefault();
     const id = input.trim().toLowerCase();
@@ -58,6 +73,10 @@ export function JoinBetByID() {
       return;
     }
     if (b.status !== "OPEN") return;
+    if (gate === "finished") {
+      error("This match has already finished — bet can no longer be joined");
+      return;
+    }
 
     const side = oppositeSide(b.creator_side);
     const confirmed = confirm(
@@ -218,36 +237,48 @@ export function JoinBetByID() {
                   duel.
                 </p>
               ) : bet.status === "OPEN" ? (
-                <Button
-                  onClick={() => handleJoin(bet)}
-                  disabled={isJoining && joiningBetId === bet.id}
-                  variant="gradient"
-                  className="w-full"
-                >
-                  {isJoining && joiningBetId === bet.id ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Joining...
-                    </>
-                  ) : (
-                    <>
-                      Join on {sideName(oppositeSide(bet.creator_side), bet)} for{" "}
-                      {formatWei(bet.amount)}
-                      {(() => {
-                        const voor = handicapLabel(bet);
-                        return voor ? (
-                          <>
-                            {" "}
-                            <span className="text-gold">
-                              · {sideName(bet.creator_side, bet)} gives {voor}
-                            </span>
-                          </>
-                        ) : null;
-                      })()}
-                      <ArrowRight className="w-4 h-4 ml-2" />
-                    </>
-                  )}
-                </Button>
+                gate === "finished" ? (
+                  <Button
+                    disabled
+                    variant="outline"
+                    className="w-full text-muted-foreground"
+                    title="Match already finished"
+                  >
+                    <Clock className="w-4 h-4 mr-2" />
+                    Match already finished
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={() => handleJoin(bet)}
+                    disabled={isJoining && joiningBetId === bet.id}
+                    variant="gradient"
+                    className="w-full"
+                  >
+                    {isJoining && joiningBetId === bet.id ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Joining...
+                      </>
+                    ) : (
+                      <>
+                        Join on {sideName(oppositeSide(bet.creator_side), bet)} for{" "}
+                        {formatWei(bet.amount)}
+                        {(() => {
+                          const voor = handicapLabel(bet);
+                          return voor ? (
+                            <>
+                              {" "}
+                              <span className="text-gold">
+                                · {sideName(bet.creator_side, bet)} gives {voor}
+                              </span>
+                            </>
+                          ) : null;
+                        })()}
+                        <ArrowRight className="w-4 h-4 ml-2" />
+                      </>
+                    )}
+                  </Button>
+                )
               ) : (
                 <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
                   <Clock className="w-3.5 h-3.5" />

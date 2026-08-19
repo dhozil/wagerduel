@@ -80,6 +80,10 @@ export function BetsGrid() {
       return;
     }
     if (bet.status !== "OPEN") return;
+    if (matchGate(bet) === "finished") {
+      error("This match has already finished — bet can no longer be joined");
+      return;
+    }
 
     const side = oppositeSide(bet.creator_side);
     const confirmed = confirm(
@@ -124,7 +128,7 @@ export function BetsGrid() {
       return;
     }
     const confirmed = confirm(
-      `The settlement window for "${bet.team1} vs ${bet.team2}" has passed. Refund both players?`
+      `The settlement window for "${bet.team1} vs ${bet.team2}" has passed. Refund the staked funds?`
     );
     if (confirmed) {
       refundExpired(bet.id);
@@ -333,7 +337,27 @@ function BetCard({
 
   let action: React.ReactNode = null;
   if (bet.status === "OPEN") {
-    if (isCreator) {
+    if (expired && isConnected && currentAddress && !isWalletLoading) {
+      // Match long done and nobody joined: anyone can trigger the expiry
+      // refund so the creator's stake isn't stuck forever.
+      action = (
+        <Button
+          onClick={onRefundExpired}
+          disabled={isBusy}
+          variant="outline"
+          className="w-full border-gold/40 text-gold hover:bg-gold/10"
+        >
+          {isBusy ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Refunding...
+            </>
+          ) : (
+            "Refund (expired)"
+          )}
+        </Button>
+      );
+    } else if (isCreator) {
       action = (
         <Button
           onClick={onCancel}
@@ -352,22 +376,37 @@ function BetCard({
         </Button>
       );
     } else if (isConnected && currentAddress && !isWalletLoading && !isOwner) {
-      action = (
-        <Button onClick={onJoin} disabled={isBusy} variant="gradient" className="w-full">
-          {isBusy ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Joining...
-            </>
-          ) : (
-            <>
-              <Target className="w-4 h-4 mr-2" />
-              Join on {sideName(oppositeSide(bet.creator_side), bet)} ·{" "}
-              {formatWei(bet.amount)}
-            </>
-          )}
-        </Button>
-      );
+      if (gate === "finished") {
+        // The match is already over — joining now would bet on a known result.
+        action = (
+          <Button
+            disabled
+            variant="outline"
+            className="w-full text-muted-foreground"
+            title="Match already finished"
+          >
+            <Lock className="w-4 h-4 mr-2" />
+            Match already finished
+          </Button>
+        );
+      } else {
+        action = (
+          <Button onClick={onJoin} disabled={isBusy} variant="gradient" className="w-full">
+            {isBusy ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Joining...
+              </>
+            ) : (
+              <>
+                <Target className="w-4 h-4 mr-2" />
+                Join on {sideName(oppositeSide(bet.creator_side), bet)} ·{" "}
+                {formatWei(bet.amount)}
+              </>
+            )}
+          </Button>
+        );
+      }
     } else if (!isConnected && !isOwner) {
       action = (
         <Button variant="gradient" className="w-full" disabled>
