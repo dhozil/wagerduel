@@ -21,7 +21,7 @@ from genlayer_py.types import TransactionStatus
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 load_dotenv(os.path.join(ROOT, ".env"))
 
-ADDRESS = "0xDFF8B9A24D5773f44ad422f32382877A504B84ec"
+ADDRESS = "0x587318b4965a4186Eb5c7E815f079FD3033ca284"
 OWNER = "0x28Cf6872815C1F275b4Ae5a291799d11cF5bd0De"
 GEN = 10**18
 RESOLVE = "--resolve" in sys.argv
@@ -118,18 +118,24 @@ def main() -> None:
     print("Balances after refund:", alice.address[:10], read("get_balance", [alice.address]),
           "|", bob.address[:10], read("get_balance", [bob.address]))
 
-    # 5. Handicap bet created live and exposed (create + store, no resolve)
-    hb_id = "2025-01-02_barcelona_leeds"
+    # 5. OPEN bet nobody joined: after the deadline, anyone can trigger the
+    #    expiry refund -> the creator gets their stake back, bet CANCELED.
+    hb_id = "2025-01-03_barcelona_leeds"
     if _bet_status(client, ADDRESS, read, hb_id) not in ("RESOLVED", "CANCELED"):
         write(alice, "create_bet",
-              ["2025-01-02", "Barcelona", "Leeds", "1",
-               "https://www.bbc.com/sport/football/scores-fixtures/2025-01-02",
-               1 * GEN, 2])
+              ["2025-01-03", "Barcelona", "Leeds", "1",
+               "https://www.bbc.com/sport/football/scores-fixtures/2025-01-03",
+               1 * GEN, 0])
+    if _bet_status(client, ADDRESS, read, hb_id) == "OPEN":
+        write(bob, "refund_expired", [hb_id])  # no join -> OPEN refund path
     hb = read("get_bet", [hb_id])
-    print("Handicap bet:", hb["team1"], "vs", hb["team2"],
-          "| handicap_halves:", hb["handicap_halves"],
-          "| status:", hb["status"])
-    print("Escrow:", read("get_total_escrow"))
+    print("OPEN refund bet:", hb["team1"], "vs", hb["team2"],
+          "| status:", hb["status"], "| real_winner:", hb["real_winner"])
+    assert hb["status"] == "CANCELED" and hb["real_winner"] == "REFUND", \
+        "OPEN refund did not settle"
+    print("Escrow after OPEN refund:", read("get_total_escrow"))
+    print("Balance of", alice.address[:10], "after OPEN refund:",
+          read("get_balance", [alice.address]))
 
     # 6. Owner-only gate: a player cannot withdraw fees (tx reverts)
     rec = write(bob, "withdraw_fees")
