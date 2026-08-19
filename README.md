@@ -99,6 +99,26 @@ Lifecycle edges:
 - **Owner fees** — the deployer (`owner`) accumulates fees in `owner_fees` and
   can `withdraw_fees()` them out. The owner can never place bets.
 
+## Fee Preset (transaction fees)
+
+When you **Create Bet** (and when others **Join** or **Resolve**), the modal
+asks you to pick a **Fee Preset**: `Low`, `Standard`, or `High`. This is a
+**GenLayer network fee**, separate from WagerDuel's 2% platform fee — the 2%
+kicks in only when a duel settles.
+
+The preset sets how many **validation ("appeal") rounds** the GenVM spends on
+your transaction under the Equivalence Principle:
+
+| Preset | Validation rounds | Cost | When to use |
+|---|---|---|---|
+| **Low** | 0 appeals | Lowest | Cheap, low-stakes transactions where a single validation pass is enough |
+| **Standard** | 1 appeal | Moderate | The default — good balance of cost and safety for normal duels |
+| **High** | 2 appeals | Highest | Critical transactions where extra validation confidence matters |
+
+The preset only changes how much you pay the **network** for execution, not the
+platform fee — that stays 2% on settlement no matter which preset you pick.
+`Standard` is recommended for everyday duels.
+
 ## Contract reference
 
 Contract: `contracts/p2p_gambling.py` — class `P2PGambling`.
