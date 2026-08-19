@@ -2,7 +2,7 @@
 
 import { Hourglass, Swords, Trophy, Users } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
-import { BetsTable } from "@/components/BetsTable";
+import { BetsGrid } from "@/components/BetsGrid";
 import { JoinBetByID } from "@/components/JoinBetByID";
 import { MarketStats } from "@/components/MarketStats";
 import { useBets } from "@/lib/hooks/useP2PGambling";
@@ -29,7 +29,7 @@ export default function PlayPage() {
     <div id="top" className="min-h-screen flex flex-col">
       <Navbar />
       <main className="flex-grow pt-32 pb-12 px-4 md:px-6 lg:px-8">
-        <div className="max-w-screen-xl mx-auto">
+        <div className="max-w-screen-2xl mx-auto">
           {/* Header */}
           <div className="mb-8 animate-slide-up">
             <div className="flex items-center gap-3 mb-3">
@@ -41,8 +41,8 @@ export default function PlayPage() {
                   The Arena
                 </h1>
                 <p className="text-sm text-muted-foreground">
-                  Browse open duels or jump straight into a friend&apos;s bet by
-                  entering its ID.
+                  Browse open duels, join one, or jump straight into a
+                  friend&apos;s bet by entering its ID below.
                 </p>
               </div>
             </div>
@@ -61,11 +61,13 @@ export default function PlayPage() {
             </div>
           </div>
 
-          {/* Content */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
-            <div className="lg:col-span-8 space-y-6">
+          {/* Bets grid — the main browsing experience */}
+          <BetsGrid />
+
+          {/* Join by ID + market stats */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-8">
+            <div className="lg:col-span-8">
               <JoinBetByID />
-              <BetsTable />
             </div>
             <div className="lg:col-span-4">
               <MarketStats />
