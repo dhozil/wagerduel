@@ -57,16 +57,22 @@ export function BetsGrid() {
   const { refundExpired, isRefunding, refundingBetId } = useRefundExpired();
   const { data: owner } = useOwner();
   const [filter, setFilter] = useState<"all" | "mine">("all");
-  const { byDate } = useMatchGates(bets);
+  const { byDate, loading: gatesLoading } = useMatchGates(bets);
   const isOwner =
     !!address && !!owner && address.toLowerCase() === owner.toLowerCase();
 
-  const matchGate = (bet: Bet): MatchGate =>
-    matchGateForBet(
+  const matchGate = (bet: Bet): MatchGate => {
+    const dateFixtures = byDate.get(bet.game_date);
+    // While a date's fixture feed is still fetching and we have nothing cached
+    // for it, report "loading" so the Resolve button shows a checking label
+    // instead of locking on a premature verdict.
+    if (gatesLoading && !dateFixtures?.length) return "loading";
+    return matchGateForBet(
       bet.game_date,
       new Date(),
-      findFixtureForBet(byDate.get(bet.game_date), bet)
+      findFixtureForBet(dateFixtures ?? [], bet)
     );
+  };
 
   const handleJoin = (bet: Bet) => {
     if (!address) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Plus, Loader2, Calendar, Users, Coins, Link2 } from "lucide-react";
 import { useCreateBet, useBalance, useOwner } from "@/lib/hooks/useP2PGambling";
 import type { FeePresetLevel } from "@/lib/genlayer/fees";
@@ -45,7 +45,7 @@ export function CreateBetModal({
 }: CreateBetModalProps) {
   const { isConnected, address, isLoading } = useWallet();
   const { createBet, isCreating, isSuccess } = useCreateBet();
-  const { data: balance = 0 } = useBalance(address);
+  const { data: balance = 0, isLoading: isBalanceLoading } = useBalance(address);
   const { data: owner } = useOwner();
   const isOwner =
     !!address && !!owner && address.toLowerCase() === owner.toLowerCase();
@@ -165,8 +165,13 @@ export function CreateBetModal({
       return;
     }
 
+    if (isOwner) {
+      error("The contract owner cannot place bets");
+      return;
+    }
+
     const amountWei = parseAmountWei()!;
-    if (balance < Number(amountWei)) {
+    if (!isBalanceLoading && balance < Number(amountWei)) {
       error("Insufficient balance", {
         description:
           "Your on-chain balance is lower than the stake. Deposit first on your Profile page.",
@@ -208,9 +213,15 @@ export function CreateBetModal({
     }
   };
 
-  // Prefill the form when the modal opens with a preselected fixture.
+  // Prefill the form only when the modal transitions to open with a preselected
+  // fixture. Parent pages recreate `initialValues` on every render (e.g. the
+  // fixtures feed refetches every 60s), so keying off its identity would wipe
+  // whatever the user is typing mid-session.
+  const prevOpenRef = useRef(effectiveOpen);
   useEffect(() => {
-    if (effectiveOpen && initialValues) {
+    const justOpened = effectiveOpen && !prevOpenRef.current;
+    prevOpenRef.current = effectiveOpen;
+    if (justOpened && initialValues) {
       const date = initialValues.gameDate ?? "";
       setGameDate(date);
       setTeam1(initialValues.team1 ?? "");
