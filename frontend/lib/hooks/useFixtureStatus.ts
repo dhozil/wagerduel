@@ -42,7 +42,11 @@ export function matchGateForBet(
   if (!fixture) {
     // No league data for this date/teams — fall back to the calendar.
     const dayKey = gameDate;
-    const nowKey = now.toISOString().slice(0, 10);
+    const nowKey =
+      `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(
+        2,
+        "0"
+      )}-${String(now.getDate()).padStart(2, "0")}`;
     if (dayKey < nowKey) return "finished"; // past date -> almost certainly played
     if (dayKey === nowKey) return "unknown"; // today, no feed row -> cannot know
     return "scheduled"; // future date -> definitely not finished

@@ -53,8 +53,39 @@ export function dateParam(date: Date): string {
   return `${y}${m}${d}`;
 }
 
-export function todayUTC(): string {
-  return new Date().toISOString().slice(0, 10);
+/** YYYY-MM-DD key of the given date in the viewer's LOCAL timezone. */
+export function toLocalDateKey(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+/** Today's YYYY-MM-DD in the viewer's LOCAL timezone. */
+export function todayLocal(): string {
+  return toLocalDateKey(new Date());
+}
+
+function parseDateKey(date: string): Date {
+  const [y, m, d] = date.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
+/**
+ * ESPN "dates" buckets a match by the UTC day of its kickoff. A single local
+ * calendar day can span up to two UTC days depending on the viewer's offset, so
+ * query the previous, current, and next UTC day around the local date and let
+ * the caller filter by local date. This keeps page labels in sync with what the
+ * user sees on Google/their own calendar.
+ */
+export function espnDateKeys(date: string): string[] {
+  const keys: string[] = [];
+  for (let off = -1; off <= 1; off++) {
+    const d = parseDateKey(date);
+    d.setDate(d.getDate() + off);
+    keys.push(dateParam(d));
+  }
+  return keys;
 }
 
 export function bbcFixtureUrl(date: string): string {
@@ -119,8 +150,8 @@ export function normalizeFixturesFromEspn(
     const kickoff = ev.date || comp?.date || "";
     const start = new Date(kickoff);
     const gameDate = isNaN(start.getTime())
-      ? todayUTC()
-      : start.toISOString().slice(0, 10);
+      ? todayLocal()
+      : toLocalDateKey(start);
     const state = (ev.status?.type?.state ||
       comp?.status?.type?.state ||
       "pre") as Fixture["state"];
@@ -180,13 +211,33 @@ async function fetchEspnDirect(
   slug: string,
   date: string
 ): Promise<Fixture[]> {
-  const url = `https://site.api.espn.com/apis/site/v2/sports/soccer/${encodeURIComponent(
-    slug
-  )}/scoreboard?dates=${dateParam(new Date(date + "T00:00:00Z"))}`;
-  const res = await fetch(url, { headers: BROWSER_HEADERS });
-  if (!res.ok) throw new Error(`ESPN responded ${res.status}`);
-  const payload = await res.json();
-  return normalizeFixturesFromEspn(payload, slug);
+  const settled = await Promise.allSettled(
+    espnDateKeys(date).map((key) =>
+      fetch(
+        `https://site.api.espn.com/apis/site/v2/sports/soccer/${encodeURIComponent(
+          slug
+        )}/scoreboard?dates=${key}`,
+        { headers: BROWSER_HEADERS }
+      ).then(
+        (res) => {
+          if (!res.ok) throw new Error(`ESPN responded ${res.status}`);
+          return res.json();
+        },
+        () => undefined
+      ).then((payload) =>
+        payload ? normalizeFixturesFromEspn(payload, slug) : []
+      )
+    )
+  );
+
+  const byId = new Map<string, Fixture>();
+  for (const r of settled) {
+    if (r.status !== "fulfilled") continue;
+    for (const f of r.value) byId.set(f.id, f);
+  }
+  return [...byId.values()]
+    .filter((f) => f.gameDate === date)
+    .sort((a, b) => a.kickoff.localeCompare(b.kickoff));
 }
 
 /**

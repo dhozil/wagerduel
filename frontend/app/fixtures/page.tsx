@@ -18,12 +18,18 @@ import { Navbar } from "@/components/Navbar";
 import { CreateBetModal } from "@/components/CreateBetModal";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { LEAGUES, loadFixtures, todayUTC, type Fixture } from "@/lib/fixtures";
+import {
+  LEAGUES,
+  loadFixtures,
+  todayLocal,
+  toLocalDateKey,
+  type Fixture,
+} from "@/lib/fixtures";
 import { useWallet } from "@/lib/genlayer/wallet";
 
 export default function FixturesPage() {
   const { isConnected } = useWallet();
-  const [selectedDate, setSelectedDate] = useState(todayUTC());
+  const [selectedDate, setSelectedDate] = useState(todayLocal());
   const [activeLeague, setActiveLeague] = useState<string>("all");
   const [selectedFixture, setSelectedFixture] = useState<Fixture | null>(null);
 
@@ -44,12 +50,12 @@ export default function FixturesPage() {
   );
 
   const shiftDay = (delta: number) => {
-    const d = new Date(selectedDate + "T00:00:00Z");
-    d.setUTCDate(d.getUTCDate() + delta);
-    setSelectedDate(d.toISOString().slice(0, 10));
+    const d = new Date(`${selectedDate}T00:00:00`);
+    d.setDate(d.getDate() + delta);
+    setSelectedDate(toLocalDateKey(d));
   };
 
-  const isToday = selectedDate === todayUTC();
+  const isToday = selectedDate === todayLocal();
 
   return (
     <div id="top" className="min-h-screen flex flex-col">
@@ -109,7 +115,7 @@ export default function FixturesPage() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => setSelectedDate(todayUTC())}
+                    onClick={() => setSelectedDate(todayLocal())}
                     className="text-gold hover:text-gold/80"
                   >
                     Today
@@ -223,7 +229,11 @@ function FixtureCard({
   const kickoff = new Date(fixture.kickoff);
   const kickoffLabel = isNaN(kickoff.getTime())
     ? "—"
-    : kickoff.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    : kickoff.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZoneName: "short",
+      });
 
   const live = fixture.state === "in";
   const finished = fixture.state === "post";

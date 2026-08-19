@@ -3,7 +3,7 @@ import {
   LEAGUES,
   Fixture,
   normalizeFixturesFromEspn,
-  dateParam,
+  espnDateKeys,
 } from "@/lib/fixtures";
 import { fetchBbcFixtures, mergeFixtures } from "@/lib/fixtures-bbc";
 
@@ -15,18 +15,29 @@ const BROWSER_HEADERS = {
 };
 
 async function fetchLeague(slug: string, date: string): Promise<Fixture[]> {
-  const url = `https://site.api.espn.com/apis/site/v2/sports/soccer/${encodeURIComponent(
-    slug
-  )}/scoreboard?dates=${dateParam(new Date(date + "T00:00:00Z"))}`;
-  const res = await fetch(url, {
-    headers: BROWSER_HEADERS,
-    signal: AbortSignal.timeout(8000),
-  });
-  if (!res.ok) {
-    throw new Error(`ESPN responded ${res.status} for ${slug}`);
+  const keys = espnDateKeys(date);
+  const lists = await Promise.all(
+    keys.map(async (key) => {
+      const url = `https://site.api.espn.com/apis/site/v2/sports/soccer/${encodeURIComponent(
+        slug
+      )}/scoreboard?dates=${key}`;
+      const res = await fetch(url, {
+        headers: BROWSER_HEADERS,
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!res.ok) {
+        throw new Error(`ESPN responded ${res.status} for ${slug}`);
+      }
+      const payload = await res.json();
+      return normalizeFixturesFromEspn(payload, slug);
+    })
+  );
+
+  const byId = new Map<string, Fixture>();
+  for (const list of lists) {
+    for (const f of list) byId.set(f.id, f);
   }
-  const payload = await res.json();
-  return normalizeFixturesFromEspn(payload, slug);
+  return [...byId.values()].filter((f) => f.gameDate === date);
 }
 
 export async function GET(request: NextRequest) {
