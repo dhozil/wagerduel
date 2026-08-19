@@ -132,6 +132,7 @@ class P2PGambling {
       team2: betObj.team2 ?? "",
       creator_side: betObj.creator_side ?? "",
       opponent_side: betObj.opponent_side ?? "",
+      handicap_halves: Number(betObj.handicap_halves) || 0,
       amount: Number(betObj.amount) || 0,
       status: betObj.status ?? "",
       real_winner: betObj.real_winner ?? "",
@@ -211,6 +212,7 @@ class P2PGambling {
     side: string,
     resolutionUrl: string,
     amount: bigint,
+    handicapHalves: number,
     level: FeePresetLevel = "standard"
   ): Promise<FeePresetEstimate | undefined> {
     return estimateWriteFeePreset(
@@ -218,7 +220,15 @@ class P2PGambling {
       {
         address: this.contractAddress,
         functionName: "create_bet",
-        args: [gameDate, team1, team2, side, resolutionUrl, amount],
+        args: [
+          gameDate,
+          team1,
+          team2,
+          side,
+          resolutionUrl,
+          amount,
+          handicapHalves,
+        ],
         value: BigInt(0),
       },
       level
@@ -318,12 +328,13 @@ class P2PGambling {
     side: string,
     resolutionUrl: string,
     amountWei: bigint,
+    handicapHalves: number,
     feePreset?: FeePresetEstimate
   ): Promise<TransactionReceipt> {
     try {
       return await this.write(
         "create_bet",
-        [gameDate, team1, team2, side, resolutionUrl, amountWei],
+        [gameDate, team1, team2, side, resolutionUrl, amountWei, handicapHalves],
         BigInt(0),
         feePreset
       );

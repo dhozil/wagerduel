@@ -35,6 +35,7 @@ import {
   truncateBetId,
   truncateUrl,
   isExpired,
+  handicapLabel,
 } from "@/lib/contracts/bets";
 import type { Bet, BetStatus } from "@/lib/contracts/types";
 
@@ -427,6 +428,19 @@ function BetCard({
         </div>
         <div className="font-display font-bold text-lg truncate">{bet.team2}</div>
       </div>
+
+      {/* Handicap line */}
+      {(() => {
+        const voor = handicapLabel(bet);
+        return voor ? (
+          <div className="mt-3 text-center">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-gold/30 bg-gold/10 px-3 py-1 text-xs font-semibold text-gold">
+              <Target className="w-3 h-3" />
+              Voor: {voor}
+            </span>
+          </div>
+        ) : null;
+      })()}
 
       {/* Meta grid */}
       <div className="mt-4 grid grid-cols-2 gap-3 text-sm">

@@ -23,6 +23,10 @@ SETTLEMENT_WINDOW_DAYS = 14
 # Accumulated in owner_fees and withdrawable only by the owner.
 FEE_BPS = 200
 
+# Maximum handicap given to either team, in half-goals (4 halves = 2 goals).
+# Positive handicaps are given to Team 2, negative to Team 1.
+HANDICAP_MAX_HALVES = 4
+
 # Only these authoritative football hosts may be used as the match resolution
 # source. The list is hardcoded so any user can audit it on-chain - no oracle,
 # no owner-controlled source selection.
@@ -87,6 +91,7 @@ class Bet:
     team2: str
     creator_side: str
     opponent_side: str
+    handicap_halves: i256
     amount: u256
     status: str
     real_winner: str
@@ -190,6 +195,7 @@ any other words or characters, no markdown code fences, no commentary.
         side: str,
         resolution_url: str,
         amount: u256,
+        handicap_halves: i256 = 0,
     ) -> None:
         if side not in (SIDE_TEAM1, SIDE_TEAM2, SIDE_DRAW):
             raise gl.vm.UserError("Side must be '1', '2', or '0'")
@@ -199,6 +205,13 @@ any other words or characters, no markdown code fences, no commentary.
             raise gl.vm.UserError("Game date is required")
         if amount <= 0:
             raise gl.vm.UserError("Bet amount must be greater than 0")
+        if (
+            handicap_halves < -HANDICAP_MAX_HALVES
+            or handicap_halves > HANDICAP_MAX_HALVES
+        ):
+            raise gl.vm.UserError("Handicap must be between -2 and +2 goals")
+        if side == SIDE_DRAW and handicap_halves != 0:
+            raise gl.vm.UserError("Handicap is only available for team bets")
 
         if not (
             resolution_url.startswith("http://")
@@ -231,6 +244,7 @@ any other words or characters, no markdown code fences, no commentary.
             team2=team2,
             creator_side=side,
             opponent_side="",
+            handicap_halves=handicap_halves,
             amount=amount,
             status=STATUS_OPEN,
             real_winner="",
@@ -283,6 +297,11 @@ any other words or characters, no markdown code fences, no commentary.
         real_winner = str(match_status["winner"])
         if real_winner == "-1":
             raise gl.vm.UserError("Match not finished")
+
+        if bet.handicap_halves != 0:
+            adjusted = self._adjusted_winner(bet, str(match_status["score"]))
+            if adjusted is not None:
+                real_winner = adjusted
 
         winner_addr = self._determine_winner(bet, real_winner)
 
@@ -411,6 +430,25 @@ any other words or characters, no markdown code fences, no commentary.
         )
         self.total_escrow -= bet.amount
 
+    def _adjusted_winner(self, bet: Bet, real_score: str) -> str | None:
+        """Recompute the winner from the final score plus the handicap.
+
+        The handicap is stored in half-goals (positive = Team 2 gets the head
+        start, negative = Team 1). Scores are compared in half-goal units so
+        0.5-goal handicaps stay exact. Returns None when the score cannot be
+        parsed, in which case the caller falls back to the verified verdict.
+        """
+        parts = [p for p in real_score.split(":") if p.strip().isdigit()]
+        if len(parts) != 2:
+            return None
+        s1_halves = int(parts[0]) * 2
+        s2_halves = int(parts[1]) * 2 + int(bet.handicap_halves)
+        if s1_halves > s2_halves:
+            return SIDE_TEAM1
+        if s1_halves < s2_halves:
+            return SIDE_TEAM2
+        return SIDE_DRAW
+
     def _determine_winner(self, bet: Bet, real_winner: str):
         if real_winner == SIDE_DRAW:
             if bet.creator_side == SIDE_DRAW:
@@ -447,6 +485,7 @@ any other words or characters, no markdown code fences, no commentary.
             "team2": bet.team2,
             "creator_side": bet.creator_side,
             "opponent_side": bet.opponent_side,
+            "handicap_halves": int(bet.handicap_halves),
             "amount": int(bet.amount),
             "status": bet.status,
             "real_winner": bet.real_winner,

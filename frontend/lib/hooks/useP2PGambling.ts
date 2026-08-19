@@ -285,6 +285,7 @@ export function useCreateBet() {
       side,
       resolutionUrl,
       amountWei,
+      handicapHalves,
       feePresetLevel,
     }: {
       gameDate: string;
@@ -293,6 +294,7 @@ export function useCreateBet() {
       side: string;
       resolutionUrl: string;
       amountWei: bigint;
+      handicapHalves?: number;
       feePresetLevel?: FeePresetLevel;
     }) => {
       if (!contract) {
@@ -314,6 +316,7 @@ export function useCreateBet() {
         side,
         resolutionUrl,
         amountWei,
+        handicapHalves ?? 0,
         feePresetLevel ?? "standard"
       );
       return contract.createBet(
@@ -323,6 +326,7 @@ export function useCreateBet() {
         side,
         resolutionUrl,
         amountWei,
+        handicapHalves ?? 0,
         feePreset
       );
     },

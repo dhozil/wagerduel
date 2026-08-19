@@ -16,6 +16,7 @@ export interface Bet {
   team2: string;
   creator_side: BetSide;
   opponent_side: string;
+  handicap_halves: number;
   amount: number;
   status: BetStatus;
   real_winner: string;

@@ -10,12 +10,17 @@ import { Button } from "./ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
+import { Badge } from "./ui/badge";
 
 const WEI_PER_TOKEN = BigInt(1_000_000_000_000_000_000);
 
 function formatWeiBalance(value: number): string {
   if (!value) return "0 GEN";
   return `${(value / 1e18).toLocaleString("en-US", { maximumFractionDigits: 4 })} GEN`;
+}
+
+function formatHandicapGoals(g: number): string {
+  return Number.isInteger(g) ? String(g) : g.toFixed(1);
 }
 
 function defaultUrlFor(date: string): string {
@@ -52,6 +57,7 @@ export function CreateBetModal({
   const [team1, setTeam1] = useState("");
   const [team2, setTeam2] = useState("");
   const [side, setSide] = useState<"1" | "2" | "0" | "">("");
+  const [handicapGoals, setHandicapGoals] = useState(0);
   const [amount, setAmount] = useState("1");
   const [resolutionUrl, setResolutionUrl] = useState("");
   const [feePresetLevel, setFeePresetLevel] = useState<FeePresetLevel>("standard");
@@ -78,6 +84,27 @@ export function CreateBetModal({
     const num = Number(trimmed);
     if (!isFinite(num) || num <= 0) return null;
     return BigInt(Math.round(num * Number(WEI_PER_TOKEN)));
+  };
+
+  // Handicap is stored as half-goals applied to Team 2 in the contract.
+  // Positive = Team 2 gets the head start, negative = Team 1. The "voor" is
+  // always given to the OPPONENT (the side the creator is not betting on).
+  const handicapHalves =
+    side === "2"
+      ? -Math.round(handicapGoals * 2)
+      : Math.round(handicapGoals * 2);
+
+  const handicapLabel =
+    side === "1"
+      ? team2.trim() || "Team 2"
+      : side === "2"
+        ? team1.trim() || "Team 1"
+        : "";
+
+  const handleSelectSide = (next: "1" | "2" | "0") => {
+    setSide(next);
+    if (next === "0") setHandicapGoals(0);
+    setErrors({ ...errors, side: "" });
   };
 
   const validateForm = (): boolean => {
@@ -154,6 +181,7 @@ export function CreateBetModal({
       side: side as "1" | "2" | "0",
       resolutionUrl: resolutionUrl.trim(),
       amountWei,
+      handicapHalves,
       feePresetLevel,
     });
   };
@@ -163,6 +191,7 @@ export function CreateBetModal({
     setTeam1("");
     setTeam2("");
     setSide("");
+    setHandicapGoals(0);
     setAmount("1");
     setResolutionUrl("");
     setErrors({ gameDate: "", team1: "", team2: "", side: "", amount: "", resolutionUrl: "" });
@@ -186,6 +215,8 @@ export function CreateBetModal({
       setGameDate(date);
       setTeam1(initialValues.team1 ?? "");
       setTeam2(initialValues.team2 ?? "");
+      setSide("");
+      setHandicapGoals(0);
       setResolutionUrl(
         initialValues.resolutionUrl ?? (date ? defaultUrlFor(date) : "")
       );
@@ -342,10 +373,7 @@ export function CreateBetModal({
             <div className="grid grid-cols-3 gap-3">
               <button
                 type="button"
-                onClick={() => {
-                  setSide("1");
-                  setErrors({ ...errors, side: "" });
-                }}
+                onClick={() => handleSelectSide("1")}
                 disabled={!team1.trim()}
                 className={`p-4 rounded-lg border-2 transition-all ${
                   side === "1"
@@ -358,10 +386,7 @@ export function CreateBetModal({
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  setSide("0");
-                  setErrors({ ...errors, side: "" });
-                }}
+                onClick={() => handleSelectSide("0")}
                 disabled={!team1.trim() || !team2.trim()}
                 className={`p-4 rounded-lg border-2 transition-all ${
                   side === "0"
@@ -374,10 +399,7 @@ export function CreateBetModal({
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  setSide("2");
-                  setErrors({ ...errors, side: "" });
-                }}
+                onClick={() => handleSelectSide("2")}
                 disabled={!team2.trim()}
                 className={`p-4 rounded-lg border-2 transition-all ${
                   side === "2"
@@ -392,6 +414,52 @@ export function CreateBetModal({
             {errors.side && (
               <p className="text-xs text-destructive">{errors.side}</p>
             )}
+          </div>
+
+          {/* Handicap */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label>Handicap (voor)</Label>
+              {handicapGoals > 0 && side && side !== "0" && (
+                <Badge variant="secondary" className="text-[11px]">
+                  {handicapLabel} +{formatHandicapGoals(handicapGoals)}
+                </Badge>
+              )}
+            </div>
+            <div className="grid grid-cols-5 gap-2">
+              {[0, 0.5, 1, 1.5, 2].map((g) => (
+                <button
+                  key={g}
+                  type="button"
+                  onClick={() => setHandicapGoals(g)}
+                  disabled={!side || side === "0"}
+                  className={`rounded-md border px-2 py-2 text-center transition-all cursor-pointer ${
+                    handicapGoals === g
+                      ? "border-accent bg-accent/20 text-accent"
+                      : "border-white/10 hover:border-white/20"
+                  } ${
+                    !side || side === "0"
+                      ? "opacity-50 cursor-not-allowed"
+                      : ""
+                  }`}
+                >
+                  <div className="text-sm font-semibold">
+                    {g === 0 ? "0" : `+${formatHandicapGoals(g)}`}
+                  </div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">
+                    {g === 0 ? "No voor" : "voor"}
+                  </div>
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Give your opponent a head start to level the field.{" "}
+              {side === "0"
+                ? "Not available for Draw bets."
+                : side
+                  ? `If you pick ${side === "1" ? team1.trim() || "Team 1" : team2.trim() || "Team 2"}, ${handicapLabel} starts +${formatHandicapGoals(handicapGoals)} ahead. A level adjusted score refunds both.`
+                  : "Pick your side first to set a handicap."}
+            </p>
           </div>
 
           {/* Stake */}

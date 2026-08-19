@@ -78,10 +78,11 @@ balance       (escrow: 5 GEN)         (escrow: 10 GEN)       verify winner + sco
 ```
 
 1. **Deposit** — `deposit()` (payable) adds GEN to your on-chain balance.
-2. **Create** — `create_bet(game_date, team1, team2, side, resolution_url, amount)`
+2. **Create** — `create_bet(game_date, team1, team2, side, resolution_url, amount, handicap_halves=0)`
    deducts your stake and opens the duel. Pick Team 1, Team 2, or Draw and commit
    a trusted source URL (BBC, ESPN, Sky Sports, FotMob, Goal, The Guardian,
-   UEFA, Premier League).
+   UEFA, Premier League). Optionally set a **handicap (voor)** to level the field
+   (see below).
 3. **Join** — `join_bet(bet_id, side)` locks the matching stake and seals the
    duel. Opponents must choose the opposite outcome.
 4. **Resolve** — anyone calls `resolve_bet(bet_id)`. The contract re-reads the
@@ -119,6 +120,26 @@ The preset only changes how much you pay the **network** for execution, not the
 platform fee — that stays 2% on settlement no matter which preset you pick.
 `Standard` is recommended for everyday duels.
 
+## Handicap (voor)
+
+When the two sides are mismatched (e.g. Barcelona vs Leeds), the creator can
+give the **opponent** a head start so the duel is fair. Handicaps are picked in
+the **Create Bet** modal from `0 / +0.5 / +1 / +1.5 / +2`.
+
+- The voor is added to the **opponent of the creator's pick**. Betting Team 1 →
+  Team 2 gets the voor. Betting Team 2 → Team 1 gets the voor.
+- The creator's `handicap_halves` is the handicap **applied to Team 2**, stored
+  as half-goals: `+2` halves = Team 2 wins on a 1-goal win; `-2` halves = Team 1
+  wins on a 1-goal win. Internally the winner is decided on adjusted scores
+  (`team1_goals*2` vs `team2_goals*2 + handicap_halves`).
+- Example: creator bets **Barcelona** and gives **Leeds +1** (handicap_halves = +2
+  on Team 2). If Barca wins 2-1, adjusted = 4 vs 4 → a **draw on handicap** and
+  **both players are refunded** (no fee). A 1-0 Barca win (2 vs 4) pays the
+  Leeds bet; Barca must win by 2+ for a Barca bet to win.
+- Handicaps are only allowed on **team bets** (`side` = `1` or `2`), not Draws,
+  and are capped at ±2 goals (`HANDICAP_MAX_HALVES = 4`).
+- A handicap of 0 means no voor — the bet settles exactly as the score.
+
 ## Contract reference
 
 Contract: `contracts/p2p_gambling.py` — class `P2PGambling`.
@@ -127,7 +148,7 @@ Contract: `contracts/p2p_gambling.py` — class `P2PGambling`.
 |---|---|---|
 | `deposit()` | write (payable) | Add GEN to your on-chain balance |
 | `withdraw(amount)` | write | Send part of your balance back to your wallet |
-| `create_bet(game_date, team1, team2, side, resolution_url, amount)` | write | Lock your stake and open a duel |
+| `create_bet(game_date, team1, team2, side, resolution_url, amount, handicap_halves=0)` | write | Lock your stake and open a duel |
 | `join_bet(bet_id, side)` | write | Match the stake on the opposite outcome |
 | `cancel_bet(bet_id)` | write | Creator refunds stake while the duel is OPEN |
 | `resolve_bet(bet_id)` | write | AI-verified settlement; pays pot − 2% fee |

@@ -10,6 +10,22 @@ export function sideName(side: string, bet: Bet): string {
   return side;
 }
 
+function fmtGoals(goals: number): string {
+  return Number.isInteger(goals) ? String(goals) : goals.toFixed(1);
+}
+
+/**
+ * Human-readable handicap line for a bet, or null when there is no voor.
+ * Positive halves = Team 2 gets the head start, negative = Team 1.
+ */
+export function handicapLabel(bet: Bet): string | null {
+  const h = Number(bet.handicap_halves) || 0;
+  if (h === 0) return null;
+  return h > 0
+    ? `${bet.team2} +${fmtGoals(h / 2)}`
+    : `${bet.team1} +${fmtGoals(-h / 2)}`;
+}
+
 export function oppositeSide(creatorSide: string): string {
   if (creatorSide === "0") return "1";
   return creatorSide === "1" ? "2" : "1";

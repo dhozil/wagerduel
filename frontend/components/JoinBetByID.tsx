@@ -20,6 +20,7 @@ import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
+import { handicapLabel } from "@/lib/contracts/bets";
 import type { Bet } from "@/lib/contracts/types";
 
 function oppositeSide(creatorSide: string): string {
@@ -179,6 +180,17 @@ export function JoinBetByID() {
                 <div className="font-semibold">{sideName(bet.creator_side, bet)}</div>
               </div>
               <div>
+                <div className="text-xs text-muted-foreground uppercase tracking-wider">Voor</div>
+                {(() => {
+                  const voor = handicapLabel(bet);
+                  return voor ? (
+                    <div className="font-semibold text-gold">{voor}</div>
+                  ) : (
+                    <div className="text-muted-foreground">None</div>
+                  );
+                })()}
+              </div>
+              <div>
                 <div className="text-xs text-muted-foreground uppercase tracking-wider">Creator</div>
                 <AddressDisplay address={bet.creator} maxLength={10} />
               </div>
@@ -221,6 +233,17 @@ export function JoinBetByID() {
                     <>
                       Join on {sideName(oppositeSide(bet.creator_side), bet)} for{" "}
                       {formatWei(bet.amount)}
+                      {(() => {
+                        const voor = handicapLabel(bet);
+                        return voor ? (
+                          <>
+                            {" "}
+                            <span className="text-gold">
+                              · {sideName(bet.creator_side, bet)} gives {voor}
+                            </span>
+                          </>
+                        ) : null;
+                      })()}
                       <ArrowRight className="w-4 h-4 ml-2" />
                     </>
                   )}
