@@ -188,18 +188,85 @@ function LiveDuelBody() {
   const statusLabel = live.status === "JOINED" ? "Joined" : "Open";
   const fx = findFixtureForBet(byDate.get(live.game_date), live);
 
+  // The creator/opponent chose a SIDE — put their label and stake on the card
+  // of the team they actually picked, not always the left card.
+  const creatorSide = live.creator_side;
+  const opponentSide = live.opponent_side;
+  const creatorOnTeam1 = creatorSide === "1";
+  const creatorOnTeam2 = creatorSide === "2";
+  const creatorOnDraw = creatorSide === "0";
+  const opponentOnTeam1 = opponentSide === "1";
+  const opponentOnTeam2 = opponentSide === "2";
+
+  const teamBox = ({
+    team,
+    crest,
+    playerLabel,
+    playerAddr,
+    isCreator,
+    stakeText,
+  }: {
+    team: string;
+    crest?: string;
+    playerLabel: string;
+    playerAddr?: string;
+    isCreator: boolean;
+    stakeText: string;
+  }) => (
+    <div className="brand-card rounded-2xl p-4 text-center">
+      <div className="flex justify-center mb-2">
+        <TeamCrest name={team} logo={crest} size={44} />
+      </div>
+      <div className="font-display font-semibold text-lg truncate">{team}</div>
+      <div
+        className={`mt-1 text-xs truncate ${
+          isCreator ? "text-gold" : "text-muted-foreground"
+        }`}
+        title={playerAddr}
+      >
+        {playerLabel}
+      </div>
+      <div className="mt-3 text-sm font-bold text-gold">{stakeText}</div>
+    </div>
+  );
+
+  const creatorChip = (
+    <div className="mt-2 mx-auto max-w-[22ch] text-[10px] uppercase tracking-widest text-gold">
+      {shortAddr(live.creator)} picked Draw
+    </div>
+  );
+
+  const box1 = teamBox({
+    team: live.team1,
+    crest: fx?.logo1,
+    playerLabel: creatorOnTeam1
+      ? `by ${shortAddr(live.creator)} · Creator`
+      : opponentOnTeam1
+        ? `by ${shortAddr(live.opponent)} · Rival`
+        : "waiting for rival",
+    playerAddr: creatorOnTeam1 ? live.creator : opponentOnTeam1 ? live.opponent : undefined,
+    isCreator: creatorOnTeam1,
+    stakeText:
+      creatorOnTeam1 || opponentOnTeam1 ? `Stake ${formatWei(live.amount)}` : "Open slot",
+  });
+
+  const box2 = teamBox({
+    team: live.team2,
+    crest: fx?.logo2,
+    playerLabel: creatorOnTeam2
+      ? `by ${shortAddr(live.creator)} · Creator`
+      : opponentOnTeam2
+        ? `by ${shortAddr(live.opponent)} · Rival`
+        : "waiting for rival",
+    playerAddr: creatorOnTeam2 ? live.creator : opponentOnTeam2 ? live.opponent : undefined,
+    isCreator: creatorOnTeam2,
+    stakeText:
+      creatorOnTeam2 || opponentOnTeam2 ? `Stake ${formatWei(live.amount)}` : "Open slot",
+  });
+
   return (
     <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-      <div className="brand-card rounded-2xl p-4 text-center">
-        <div className="flex justify-center mb-2">
-          <TeamCrest name={live.team1} logo={fx?.logo1} size={44} />
-        </div>
-        <div className="font-display font-semibold text-lg truncate">{live.team1}</div>
-        <div className="text-xs text-muted-foreground mt-1 truncate" title={live.creator}>
-          by {shortAddr(live.creator)}
-        </div>
-        <div className="mt-3 text-sm font-bold text-gold">Stake {formatWei(live.amount)}</div>
-      </div>
+      {box1}
 
       <div className="text-center">
         <div className="chip chip-gold w-14 h-14 mx-auto text-lg font-bold animate-float">
@@ -208,22 +275,10 @@ function LiveDuelBody() {
         <div className="mt-2 text-[10px] uppercase tracking-widest text-muted-foreground">
           {statusLabel} pot
         </div>
+        {creatorOnDraw && creatorChip}
       </div>
 
-      <div className="brand-card rounded-2xl p-4 text-center">
-        <div className="flex justify-center mb-2">
-          <TeamCrest name={live.team2} logo={fx?.logo2} size={44} />
-        </div>
-        <div className="font-display font-semibold text-lg truncate">{live.team2}</div>
-        <div className="text-xs text-muted-foreground mt-1 truncate" title={live.opponent}>
-          {live.status === "JOINED"
-            ? `by ${shortAddr(live.opponent)}`
-            : "waiting for rival"}
-        </div>
-        <div className="mt-3 text-sm font-bold text-gold">
-          {live.status === "JOINED" ? `Stake ${formatWei(live.amount)}` : "Open slot"}
-        </div>
-      </div>
+      {box2}
     </div>
   );
 }
