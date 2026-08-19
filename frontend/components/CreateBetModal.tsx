@@ -265,7 +265,7 @@ export function CreateBetModal({
           </Button>
         </DialogTrigger>
       )}
-      <DialogContent className="brand-card border-2 sm:max-w-[500px]">
+      <DialogContent className="brand-card border-2 w-[calc(100vw-2rem)] sm:max-w-3xl max-h-[92vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold">Create Head-to-Head Bet</DialogTitle>
           <DialogDescription>
@@ -281,251 +281,261 @@ export function CreateBetModal({
               {formatWeiBalance(balance)}
             </span>
           </div>
-          <p className="text-xs text-muted-foreground -mt-3">
+          <p className="text-xs text-muted-foreground -mt-4">
             Bets are funded from your on-chain balance. Use the wallet panel to
             deposit before creating a bet.
           </p>
-          {/* Game Date */}
-          <div className="space-y-2">
-            <Label htmlFor="gameDate" className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 !text-white" />
-              Game Date
-            </Label>
-            <Input
-              id="gameDate"
-              type="date"
-              value={gameDate}
-              onChange={(e) => {
-                setGameDate(e.target.value);
-                setResolutionUrl((prev) => prev || defaultUrlFor(e.target.value));
-                setErrors({ ...errors, gameDate: "" });
-              }}
-              className={errors.gameDate ? "border-destructive" : ""}
-            />
-            {errors.gameDate && (
-              <p className="text-xs text-destructive">{errors.gameDate}</p>
-            )}
-          </div>
 
-          {/* Teams */}
-          <div className="space-y-4">
-            <Label className="flex items-center gap-2">
-              <Users className="w-4 h-4" />
-              Teams
-            </Label>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+            {/* Column 1 */}
+            <div className="space-y-6">
+              {/* Game Date */}
               <div className="space-y-2">
+                <Label htmlFor="gameDate" className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4 !text-white" />
+                  Game Date
+                </Label>
                 <Input
-                  id="team1"
-                  type="text"
-                  placeholder="Team 1"
-                  value={team1}
+                  id="gameDate"
+                  type="date"
+                  value={gameDate}
                   onChange={(e) => {
-                    setTeam1(e.target.value);
-                    setErrors({ ...errors, team1: "" });
+                    setGameDate(e.target.value);
+                    setResolutionUrl((prev) => prev || defaultUrlFor(e.target.value));
+                    setErrors({ ...errors, gameDate: "" });
                   }}
-                  className={errors.team1 ? "border-destructive" : ""}
+                  className={errors.gameDate ? "border-destructive" : ""}
                 />
-                {errors.team1 && (
-                  <p className="text-xs text-destructive">{errors.team1}</p>
+                {errors.gameDate && (
+                  <p className="text-xs text-destructive">{errors.gameDate}</p>
                 )}
               </div>
+
+              {/* Teams */}
+              <div className="space-y-3">
+                <Label className="flex items-center gap-2">
+                  <Users className="w-4 h-4" />
+                  Teams
+                </Label>
+                <div className="grid grid-cols-1 gap-3">
+                  <div className="space-y-2">
+                    <Input
+                      id="team1"
+                      type="text"
+                      placeholder="Team 1"
+                      value={team1}
+                      onChange={(e) => {
+                        setTeam1(e.target.value);
+                        setErrors({ ...errors, team1: "" });
+                      }}
+                      className={errors.team1 ? "border-destructive" : ""}
+                    />
+                    {errors.team1 && (
+                      <p className="text-xs text-destructive">{errors.team1}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Input
+                      id="team2"
+                      type="text"
+                      placeholder="Team 2"
+                      value={team2}
+                      onChange={(e) => {
+                        setTeam2(e.target.value);
+                        setErrors({ ...errors, team2: "" });
+                      }}
+                      className={errors.team2 ? "border-destructive" : ""}
+                    />
+                    {errors.team2 && (
+                      <p className="text-xs text-destructive">{errors.team2}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Stake */}
               <div className="space-y-2">
+                <Label htmlFor="amount" className="flex items-center gap-2">
+                  <Coins className="w-4 h-4 !text-white" />
+                  Stake (GEN)
+                </Label>
                 <Input
-                  id="team2"
-                  type="text"
-                  placeholder="Team 2"
-                  value={team2}
+                  id="amount"
+                  type="number"
+                  min="0"
+                  step="0.001"
+                  value={amount}
                   onChange={(e) => {
-                    setTeam2(e.target.value);
-                    setErrors({ ...errors, team2: "" });
+                    setAmount(e.target.value);
+                    setErrors({ ...errors, amount: "" });
                   }}
-                  className={errors.team2 ? "border-destructive" : ""}
+                  className={errors.amount ? "border-destructive" : ""}
                 />
-                {errors.team2 && (
-                  <p className="text-xs text-destructive">{errors.team2}</p>
+                <p className="text-xs text-muted-foreground">
+                  Both players lock the same stake. The winner takes the entire pot.
+                </p>
+                {errors.amount && (
+                  <p className="text-xs text-destructive">{errors.amount}</p>
                 )}
               </div>
             </div>
-          </div>
 
-          {/* Resolution Source */}
-          <div className="space-y-2">
-            <Label htmlFor="resolutionUrl" className="flex items-center gap-2">
-              <Link2 className="w-4 h-4 !text-white" />
-              Resolution Source URL
-            </Label>
-            <Input
-              id="resolutionUrl"
-              type="url"
-              placeholder="https://www.bbc.com/sport/football/scores-fixtures/2024-06-20"
-              value={resolutionUrl}
-              onChange={(e) => {
-                setResolutionUrl(e.target.value);
-                setErrors({ ...errors, resolutionUrl: "" });
-              }}
-              className={errors.resolutionUrl ? "border-destructive" : ""}
-            />
-            <p className="text-xs text-muted-foreground">
-              The trusted source WagerDuel&apos;s AI will fetch to determine the
-              result. Only authoritative football sources are allowed (BBC,
-              ESPN, Sky Sports, FotMob, Goal, The Guardian, UEFA, Premier
-              League) — the URL is stored on-chain and shown to your opponent
-              before they join.
-            </p>
-            {errors.resolutionUrl && (
-              <p className="text-xs text-destructive">{errors.resolutionUrl}</p>
-            )}
-          </div>
+            {/* Column 2 */}
+            <div className="space-y-6">
+              {/* Resolution Source */}
+              <div className="space-y-2">
+                <Label htmlFor="resolutionUrl" className="flex items-center gap-2">
+                  <Link2 className="w-4 h-4 !text-white" />
+                  Resolution Source URL
+                </Label>
+                <Input
+                  id="resolutionUrl"
+                  type="url"
+                  placeholder="https://www.bbc.com/sport/football/scores-fixtures/2024-06-20"
+                  value={resolutionUrl}
+                  onChange={(e) => {
+                    setResolutionUrl(e.target.value);
+                    setErrors({ ...errors, resolutionUrl: "" });
+                  }}
+                  className={errors.resolutionUrl ? "border-destructive" : ""}
+                />
+                <p className="text-xs text-muted-foreground">
+                  The trusted source WagerDuel&apos;s AI will fetch to determine the
+                  result. Only authoritative football sources are allowed (BBC,
+                  ESPN, Sky Sports, FotMob, Goal, The Guardian, UEFA, Premier
+                  League) — the URL is stored on-chain and shown to your opponent
+                  before they join.
+                </p>
+                {errors.resolutionUrl && (
+                  <p className="text-xs text-destructive">{errors.resolutionUrl}</p>
+                )}
+              </div>
 
-          {/* Your Side */}
-          <div className="space-y-3">
-            <Label>Your Side</Label>
-            <div className="grid grid-cols-3 gap-3">
-              <button
-                type="button"
-                onClick={() => handleSelectSide("1")}
-                disabled={!team1.trim()}
-                className={`p-4 rounded-lg border-2 transition-all ${
-                  side === "1"
-                    ? "border-accent bg-accent/20 text-accent"
-                    : "border-white/10 hover:border-white/20"
-                } ${!team1.trim() ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
-              >
-                <div className="font-semibold text-sm">{team1 || "Team 1"}</div>
-                <div className="text-xs text-muted-foreground mt-1">Wins</div>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSelectSide("0")}
-                disabled={!team1.trim() || !team2.trim()}
-                className={`p-4 rounded-lg border-2 transition-all ${
-                  side === "0"
-                    ? "border-yellow-500 bg-yellow-500/20 text-yellow-400"
-                    : "border-white/10 hover:border-white/20"
-                } ${!team1.trim() || !team2.trim() ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
-              >
-                <div className="font-semibold text-sm">Draw</div>
-                <div className="text-xs text-muted-foreground mt-1">Tie</div>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSelectSide("2")}
-                disabled={!team2.trim()}
-                className={`p-4 rounded-lg border-2 transition-all ${
-                  side === "2"
-                    ? "border-accent bg-accent/20 text-accent"
-                    : "border-white/10 hover:border-white/20"
-                } ${!team2.trim() ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
-              >
-                <div className="font-semibold text-sm">{team2 || "Team 2"}</div>
-                <div className="text-xs text-muted-foreground mt-1">Wins</div>
-              </button>
-            </div>
-            {errors.side && (
-              <p className="text-xs text-destructive">{errors.side}</p>
-            )}
-          </div>
+              {/* Your Side */}
+              <div className="space-y-3">
+                <Label>Your Side</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleSelectSide("1")}
+                    disabled={!team1.trim()}
+                    className={`p-3 rounded-lg border-2 transition-all ${
+                      side === "1"
+                        ? "border-accent bg-accent/20 text-accent"
+                        : "border-white/10 hover:border-white/20"
+                    } ${!team1.trim() ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+                  >
+                    <div className="font-semibold text-sm">{team1 || "Team 1"}</div>
+                    <div className="text-xs text-muted-foreground mt-1">Wins</div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectSide("0")}
+                    disabled={!team1.trim() || !team2.trim()}
+                    className={`p-3 rounded-lg border-2 transition-all ${
+                      side === "0"
+                        ? "border-yellow-500 bg-yellow-500/20 text-yellow-400"
+                        : "border-white/10 hover:border-white/20"
+                    } ${!team1.trim() || !team2.trim() ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+                  >
+                    <div className="font-semibold text-sm">Draw</div>
+                    <div className="text-xs text-muted-foreground mt-1">Tie</div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectSide("2")}
+                    disabled={!team2.trim()}
+                    className={`p-3 rounded-lg border-2 transition-all ${
+                      side === "2"
+                        ? "border-accent bg-accent/20 text-accent"
+                        : "border-white/10 hover:border-white/20"
+                    } ${!team2.trim() ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+                  >
+                    <div className="font-semibold text-sm">{team2 || "Team 2"}</div>
+                    <div className="text-xs text-muted-foreground mt-1">Wins</div>
+                  </button>
+                </div>
+                {errors.side && (
+                  <p className="text-xs text-destructive">{errors.side}</p>
+                )}
+              </div>
 
-          {/* Handicap */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <Label>Handicap (voor)</Label>
-              {handicapGoals > 0 && side && side !== "0" && (
-                <Badge variant="secondary" className="text-[11px]">
-                  {handicapLabel} +{formatHandicapGoals(handicapGoals)}
-                </Badge>
-              )}
-            </div>
-            <div className="grid grid-cols-5 gap-2">
-              {[0, 0.5, 1, 1.5, 2].map((g) => (
-                <button
-                  key={g}
-                  type="button"
-                  onClick={() => setHandicapGoals(g)}
-                  disabled={!side || side === "0"}
-                  className={`rounded-md border px-2 py-2 text-center transition-all cursor-pointer ${
-                    handicapGoals === g
-                      ? "border-accent bg-accent/20 text-accent"
-                      : "border-white/10 hover:border-white/20"
-                  } ${
-                    !side || side === "0"
-                      ? "opacity-50 cursor-not-allowed"
-                      : ""
-                  }`}
-                >
-                  <div className="text-sm font-semibold">
-                    {g === 0 ? "0" : `+${formatHandicapGoals(g)}`}
-                  </div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5">
-                    {g === 0 ? "No voor" : "voor"}
-                  </div>
-                </button>
-              ))}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Give your opponent a head start to level the field.{" "}
-              {side === "0"
-                ? "Not available for Draw bets."
-                : side
-                  ? `If you pick ${side === "1" ? team1.trim() || "Team 1" : team2.trim() || "Team 2"}, ${handicapLabel} starts +${formatHandicapGoals(handicapGoals)} ahead. A level adjusted score refunds both.`
-                  : "Pick your side first to set a handicap."}
-            </p>
-          </div>
+              {/* Handicap */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label>Handicap (voor)</Label>
+                  {handicapGoals > 0 && side && side !== "0" && (
+                    <Badge variant="secondary" className="text-[11px]">
+                      {handicapLabel} +{formatHandicapGoals(handicapGoals)}
+                    </Badge>
+                  )}
+                </div>
+                <div className="grid grid-cols-5 gap-2">
+                  {[0, 0.5, 1, 1.5, 2].map((g) => (
+                    <button
+                      key={g}
+                      type="button"
+                      onClick={() => setHandicapGoals(g)}
+                      disabled={!side || side === "0"}
+                      className={`rounded-md border px-2 py-2 text-center transition-all cursor-pointer ${
+                        handicapGoals === g
+                          ? "border-accent bg-accent/20 text-accent"
+                          : "border-white/10 hover:border-white/20"
+                      } ${
+                        !side || side === "0"
+                          ? "opacity-50 cursor-not-allowed"
+                          : ""
+                      }`}
+                    >
+                      <div className="text-sm font-semibold">
+                        {g === 0 ? "0" : `+${formatHandicapGoals(g)}`}
+                      </div>
+                      <div className="text-[10px] text-muted-foreground mt-0.5">
+                        {g === 0 ? "No voor" : "voor"}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Give your opponent a head start to level the field.{" "}
+                  {side === "0"
+                    ? "Not available for Draw bets."
+                    : side
+                      ? `If you pick ${side === "1" ? team1.trim() || "Team 1" : team2.trim() || "Team 2"}, ${handicapLabel} starts +${formatHandicapGoals(handicapGoals)} ahead. A level adjusted score refunds both.`
+                      : "Pick your side first to set a handicap."}
+                </p>
+              </div>
 
-          {/* Stake */}
-          <div className="space-y-2">
-            <Label htmlFor="amount" className="flex items-center gap-2">
-              <Coins className="w-4 h-4 !text-white" />
-              Stake (GEN)
-            </Label>
-            <Input
-              id="amount"
-              type="number"
-              min="0"
-              step="0.001"
-              value={amount}
-              onChange={(e) => {
-                setAmount(e.target.value);
-                setErrors({ ...errors, amount: "" });
-              }}
-              className={errors.amount ? "border-destructive" : ""}
-            />
-            <p className="text-xs text-muted-foreground">
-              Both players lock the same stake. The winner takes the entire pot.
-            </p>
-            {errors.amount && (
-              <p className="text-xs text-destructive">{errors.amount}</p>
-            )}
-          </div>
-
-          <div className="space-y-3">
-            <Label>Fee Preset</Label>
-            <div className="grid grid-cols-3 gap-2">
-              {([
-                { value: "low", label: "Low", detail: "No appeals" },
-                { value: "standard", label: "Standard", detail: "1 appeal" },
-                { value: "high", label: "High", detail: "2 appeals" },
-              ] as const).map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => setFeePresetLevel(option.value)}
-                  className={`rounded-md border px-3 py-2 text-left transition-all cursor-pointer ${
-                    feePresetLevel === option.value
-                      ? "border-accent bg-accent/20 text-accent"
-                      : "border-white/10 hover:border-white/20"
-                  }`}
-                >
-                  <div className="text-sm font-semibold">{option.label}</div>
-                  <div className="mt-0.5 text-xs text-muted-foreground">{option.detail}</div>
-                </button>
-              ))}
+              {/* Fee Preset */}
+              <div className="space-y-3">
+                <Label>Fee Preset</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  {([
+                    { value: "low", label: "Low", detail: "No appeals" },
+                    { value: "standard", label: "Standard", detail: "1 appeal" },
+                    { value: "high", label: "High", detail: "2 appeals" },
+                  ] as const).map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setFeePresetLevel(option.value)}
+                      className={`rounded-md border px-3 py-2 text-left transition-all cursor-pointer ${
+                        feePresetLevel === option.value
+                          ? "border-accent bg-accent/20 text-accent"
+                          : "border-white/10 hover:border-white/20"
+                      }`}
+                    >
+                      <div className="text-sm font-semibold">{option.label}</div>
+                      <div className="mt-0.5 text-xs text-muted-foreground">{option.detail}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
 
           {/* Submit Button */}
-          <div className="flex gap-3 pt-4">
+          <div className="flex gap-3 pt-2">
             <Button
               type="button"
               variant="secondary"

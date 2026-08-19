@@ -377,6 +377,22 @@ input[type="number"]::-webkit-inner-spin-button:hover {
 }
 
 /* ============================================================
+   Date inputs — always show the calendar icon
+   The native picker indicator ships black and is invisible on
+   the dark theme; invert it so the calendar button is always
+   visible without needing a click.
+   ============================================================ */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  filter: invert(1);
+  opacity: 0.85;
+  transition: opacity 150ms ease;
+}
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+/* ============================================================
    AppKit / Wallet modal theming
    ============================================================ */
 w3m-legal-footer,
