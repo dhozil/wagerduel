@@ -301,7 +301,7 @@ function FixtureCard({
           disabled={!betEnabled}
           title={betEnabledTitle}
         >
-          <Plus className="w-4 h-4 mr-2" />
+          {betEnabled && <Plus className="w-4 h-4 mr-2" />}
           {betEnabled ? "Create Bet" : betLabel}
         </Button>
       </div>
