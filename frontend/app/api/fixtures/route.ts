@@ -37,7 +37,10 @@ async function fetchLeague(slug: string, date: string): Promise<Fixture[]> {
   for (const list of lists) {
     for (const f of list) byId.set(f.id, f);
   }
-  return [...byId.values()].filter((f) => f.gameDate === date);
+  // This function runs in UTC and cannot know the viewer's timezone, so don't
+  // filter by date here. Return the whole 3-UTC-day window and let the browser
+  // pick the fixtures that fall on its LOCAL date.
+  return [...byId.values()];
 }
 
 export async function GET(request: NextRequest) {

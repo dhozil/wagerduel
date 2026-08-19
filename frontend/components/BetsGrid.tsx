@@ -23,12 +23,13 @@ import {
   useOwner,
 } from "@/lib/hooks/useP2PGambling";
 import { useWallet } from "@/lib/genlayer/wallet";
-import { error } from "@/lib/utils/toast";
+import { error, success } from "@/lib/utils/toast";
 import { copyText, formatWei } from "@/lib/utils";
 import { AddressDisplay } from "./AddressDisplay";
 import { TeamCrest } from "./TeamCrest";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
+import { fixtureKickoffLabel } from "@/lib/fixtures";
 import {
   sideName,
   oppositeSide,
@@ -40,6 +41,7 @@ import {
   handicapLabel,
 } from "@/lib/contracts/bets";
 import type { Bet, BetStatus } from "@/lib/contracts/types";
+import type { Fixture } from "@/lib/fixtures";
 import {
   useMatchGates,
   findFixtureForBet,
@@ -77,8 +79,11 @@ export function BetsGrid() {
 
   // Reuse the same fixture feed to decorate bets with the team crests shown on
   // the fixtures page. Unknown/custom teams get the blank placeholder.
+  const fixtureFor = (bet: Bet): Fixture | undefined =>
+    findFixtureForBet(byDate.get(bet.game_date), bet);
+
   const crestFor = (bet: Bet, which: "home" | "away"): string | undefined => {
-    const fx = findFixtureForBet(byDate.get(bet.game_date), bet);
+    const fx = fixtureFor(bet);
     return fx ? (which === "home" ? fx.logo1 : fx.logo2) : undefined;
   };
 
@@ -261,6 +266,7 @@ export function BetsGrid() {
               gate={matchGate(bet)}
               crest1={crestFor(bet, "home")}
               crest2={crestFor(bet, "away")}
+              kickoffLabel={fixtureKickoffLabel(fixtureFor(bet))}
               isOwner={isOwner}
               busy={isJoining || isResolving || isCanceling || isRefunding}
               busyTarget={
@@ -319,6 +325,7 @@ interface BetCardProps {
   gate: MatchGate;
   crest1?: string;
   crest2?: string;
+  kickoffLabel?: string;
   isOwner: boolean;
   busy: boolean;
   busyTarget: string | null;
@@ -337,6 +344,7 @@ function BetCard({
   gate,
   crest1,
   crest2,
+  kickoffLabel,
   isOwner,
   busy,
   busyTarget,
@@ -506,7 +514,12 @@ function BetCard({
       <div className="flex items-center justify-between gap-2 mb-4">
         {statusBadge(bet.status)}
         <button
-          onClick={() => copyText(bet.id)}
+          onClick={() => {
+            copyText(bet.id);
+            success("Bet ID copied to clipboard", {
+              description: bet.id,
+            });
+          }}
           title="Copy bet ID — share it with your rival"
           className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-gold transition-colors cursor-pointer"
         >
@@ -556,7 +569,14 @@ function BetCard({
           <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
             Match date
           </div>
-          <div className="font-semibold">{bet.game_date}</div>
+          <div className="font-semibold">
+            {bet.game_date}
+            {kickoffLabel ? (
+              <span className="block text-[11px] text-muted-foreground">
+                {kickoffLabel}
+              </span>
+            ) : null}
+          </div>
         </div>
         <div>
           <div className="text-[10px] uppercase tracking-wider text-muted-foreground">

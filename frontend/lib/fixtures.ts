@@ -66,6 +66,33 @@ export function todayLocal(): string {
   return toLocalDateKey(new Date());
 }
 
+/**
+ * Viewer-LOCAL calendar date of a fixture's kickoff. ESPN's raw date is an
+ * instant; rendering its UTC day would show the wrong date everywhere but
+ * UTC+0. Fixtures without a kickoff (BBC fill-ins for a requested date) keep
+ * their stored date.
+ */
+export function fixtureLocalDate(f: Fixture): string {
+  if (!f.kickoff) return f.gameDate;
+  const d = new Date(f.kickoff);
+  if (isNaN(d.getTime())) return f.gameDate;
+  return toLocalDateKey(d);
+}
+
+/**
+ * Localized kickoff label ("02:00 AM GMT+7") for a fixture, or "" if unknown.
+ */
+export function fixtureKickoffLabel(f: Fixture | undefined): string {
+  if (!f?.kickoff) return "";
+  const d = new Date(f.kickoff);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZoneName: "short",
+  });
+}
+
 function parseDateKey(date: string): Date {
   const [y, m, d] = date.split("-").map(Number);
   return new Date(y, m - 1, d);
@@ -149,9 +176,12 @@ export function normalizeFixturesFromEspn(
 
     const kickoff = ev.date || comp?.date || "";
     const start = new Date(kickoff);
+    // gameDate is the UTC calendar day of the kickoff. The serverless route runs
+    // in UTC, so it can never know the viewer's offset — the browser is the only
+    // place that can compute a LOCal date. Callers use fixtureLocalDate().
     const gameDate = isNaN(start.getTime())
       ? todayLocal()
-      : toLocalDateKey(start);
+      : start.toISOString().slice(0, 10);
     const state = (ev.status?.type?.state ||
       comp?.status?.type?.state ||
       "pre") as Fixture["state"];
@@ -235,9 +265,8 @@ async function fetchEspnDirect(
     if (r.status !== "fulfilled") continue;
     for (const f of r.value) byId.set(f.id, f);
   }
-  return [...byId.values()]
-    .filter((f) => f.gameDate === date)
-    .sort((a, b) => a.kickoff.localeCompare(b.kickoff));
+  // Return the whole UTC window; the caller filters by the viewer's LOCAL date.
+  return [...byId.values()].sort((a, b) => a.kickoff.localeCompare(b.kickoff));
 }
 
 /**

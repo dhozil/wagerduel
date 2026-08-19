@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   LEAGUES,
+  fixtureLocalDate,
   loadFixtures,
   todayLocal,
   toLocalDateKey,
@@ -45,9 +46,18 @@ export default function FixturesPage() {
     refetchInterval: 60_000,
   });
 
+  // The /api/fixtures route returns a 3-day UTC window so it can serve every
+  // timezone. The browser is the only place that knows the viewer's local
+  // offset, so filter here: a fixture belongs to this page when its kickoff's
+  // LOCAL calendar day (or stored date, for BBC fill-ins) matches the selection.
+  const dateFixtures = useMemo(
+    () => fixtures.filter((f) => fixtureLocalDate(f) === selectedDate),
+    [fixtures, selectedDate]
+  );
+
   const anyLive = useMemo(
-    () => fixtures.some((f) => f.state === "in"),
-    [fixtures]
+    () => dateFixtures.some((f) => f.state === "in"),
+    [dateFixtures]
   );
 
   const shiftDay = (delta: number) => {
@@ -173,18 +183,18 @@ export default function FixturesPage() {
                 Retry
               </Button>
             </div>
-          ) : fixtures.length === 0 ? (
+          ) : dateFixtures.length === 0 ? (
             <div className="brand-card p-12 text-center space-y-3">
               <Trophy className="w-12 h-12 mx-auto text-muted-foreground opacity-30" />
               <h3 className="text-lg font-bold">No fixtures on this date</h3>
               <p className="text-sm text-muted-foreground">
-                There are no scheduled matches for {selectedDate}. Browse
-                another day or create a custom bet.
+                There are no scheduled matches for {selectedDate} in your local
+                timezone. Browse another day or create a custom bet.
               </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {fixtures.map((fx) => (
+              {dateFixtures.map((fx) => (
                 <FixtureCard
                   key={`${fx.league}-${fx.id}-${fx.kickoff}`}
                   fixture={fx}
@@ -206,7 +216,7 @@ export default function FixturesPage() {
         initialValues={
           selectedFixture
             ? {
-                gameDate: selectedFixture.gameDate,
+                gameDate: fixtureLocalDate(selectedFixture),
                 team1: selectedFixture.team1,
                 team2: selectedFixture.team2,
                 resolutionUrl: selectedFixture.resolutionUrl,
@@ -291,7 +301,7 @@ function FixtureCard({
         )}
         <div className="flex items-center gap-1.5">
           <Clock className="w-3 h-3 text-gold" />
-          {fixture.gameDate} · {kickoffLabel}
+          {fixtureLocalDate(fixture)} · {kickoffLabel}
         </div>
         {fixture.venue && (
           <div className="flex items-center gap-1.5">
