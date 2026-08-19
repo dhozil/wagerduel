@@ -87,6 +87,11 @@ balance       (escrow: 5 GEN)         (escrow: 10 GEN)       verify winner + sco
    duel. Opponents must choose the opposite outcome.
 4. **Resolve** — anyone calls `resolve_bet(bet_id)`. The contract re-reads the
    committed URL, the LLM extracts the result, and validators confirm it.
+   The frontend **auto-reads the fixture feed** (ESPN + BBC) for the match date
+   and keeps the Resolve button **locked until the match is full-time** — for
+   upcoming fixtures it shows "Match hasn't started yet", for live games "Match
+   in progress", and unlocks automatically (checked every minute) once the feed
+   flips to `post`.
 5. **Collect** — the winner's balance is credited with the pot minus the **2%
    platform fee**. Draws refund both players in full (no fee).
 

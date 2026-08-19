@@ -11,6 +11,7 @@ import {
   Copy,
   Swords,
   Target,
+  Lock,
 } from "lucide-react";
 import {
   useBets,
@@ -38,6 +39,13 @@ import {
   handicapLabel,
 } from "@/lib/contracts/bets";
 import type { Bet, BetStatus } from "@/lib/contracts/types";
+import {
+  useMatchGates,
+  findFixtureForBet,
+  matchGateForBet,
+  lockLabel,
+} from "@/lib/hooks/useFixtureStatus";
+import type { MatchGate } from "@/lib/hooks/useFixtureStatus";
 
 export function BetsGrid() {
   const contract = useP2PGamblingContract();
@@ -49,8 +57,16 @@ export function BetsGrid() {
   const { refundExpired, isRefunding, refundingBetId } = useRefundExpired();
   const { data: owner } = useOwner();
   const [filter, setFilter] = useState<"all" | "mine">("all");
+  const { byDate } = useMatchGates(bets);
   const isOwner =
     !!address && !!owner && address.toLowerCase() === owner.toLowerCase();
+
+  const matchGate = (bet: Bet): MatchGate =>
+    matchGateForBet(
+      bet.game_date,
+      new Date(),
+      findFixtureForBet(byDate.get(bet.game_date), bet)
+    );
 
   const handleJoin = (bet: Bet) => {
     if (!address) {
@@ -224,6 +240,7 @@ export function BetsGrid() {
               onCancel={() => handleCancel(bet.id)}
               onRefundExpired={() => handleRefundExpired(bet)}
               expired={isExpired(bet.game_date)}
+              gate={matchGate(bet)}
               isOwner={isOwner}
               busy={isJoining || isResolving || isCanceling || isRefunding}
               busyTarget={
@@ -279,6 +296,7 @@ interface BetCardProps {
   onCancel: () => void;
   onRefundExpired: () => void;
   expired: boolean;
+  gate: MatchGate;
   isOwner: boolean;
   busy: boolean;
   busyTarget: string | null;
@@ -294,6 +312,7 @@ function BetCard({
   onCancel,
   onRefundExpired,
   expired,
+  gate,
   isOwner,
   busy,
   busyTarget,
@@ -352,6 +371,7 @@ function BetCard({
     }
   } else if (bet.status === "JOINED") {
     if (isConnected && currentAddress && !isWalletLoading) {
+      const finished = gate === "finished";
       if (expired) {
         action = (
           <div className="flex flex-col gap-1.5">
@@ -372,13 +392,30 @@ function BetCard({
             </Button>
             <Button
               onClick={onResolve}
-              disabled={isBusy}
+              disabled={isBusy || !finished}
               variant="ghost"
               className="w-full text-xs text-muted-foreground"
+              title={finished ? "Resolve despite the expired window" : lockLabel(gate)}
             >
-              Resolve anyway
+              {finished
+                ? "Resolve anyway"
+                : gate === "loading"
+                  ? lockLabel(gate)
+                  : `Locked · ${lockLabel(gate)}`}
             </Button>
           </div>
+        );
+      } else if (!finished) {
+        action = (
+          <Button
+            disabled
+            variant="outline"
+            className="w-full text-muted-foreground"
+            title={lockLabel(gate)}
+          >
+            <Lock className="w-4 h-4 mr-2" />
+            {gate === "loading" ? lockLabel(gate) : `Locked · ${lockLabel(gate)}`}
+          </Button>
         );
       } else {
         action = (
