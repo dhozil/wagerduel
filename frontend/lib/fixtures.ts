@@ -115,6 +115,18 @@ export function espnDateKeys(date: string): string[] {
   return keys;
 }
 
+/**
+ * Dash-form calendar dates (YYYY-MM-DD) covering the 3-day UTC window around a
+ * requested local date, so that both ESPN buckets and BBC pages can be queried
+ * for the day before/after the request. The browser filters the returned window
+ * by each viewer's LOCAL date.
+ */
+export function utcWindowDates(date: string): string[] {
+  return espnDateKeys(date).map(
+    (k) => `${k.slice(0, 4)}-${k.slice(4, 6)}-${k.slice(6, 8)}`
+  );
+}
+
 export function bbcFixtureUrl(date: string): string {
   return date
     ? `https://www.bbc.com/sport/football/scores-fixtures/${date}`

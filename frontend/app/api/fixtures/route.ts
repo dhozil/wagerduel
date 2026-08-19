@@ -4,6 +4,7 @@ import {
   Fixture,
   normalizeFixturesFromEspn,
   espnDateKeys,
+  utcWindowDates,
 } from "@/lib/fixtures";
 import { fetchBbcFixtures, mergeFixtures } from "@/lib/fixtures-bbc";
 
@@ -16,7 +17,8 @@ const BROWSER_HEADERS = {
 
 async function fetchLeague(slug: string, date: string): Promise<Fixture[]> {
   const keys = espnDateKeys(date);
-  const lists = await Promise.all(
+  // allSettled: a single failing bucket must not drop the whole league's data.
+  const settled = await Promise.allSettled(
     keys.map(async (key) => {
       const url = `https://site.api.espn.com/apis/site/v2/sports/soccer/${encodeURIComponent(
         slug
@@ -34,13 +36,25 @@ async function fetchLeague(slug: string, date: string): Promise<Fixture[]> {
   );
 
   const byId = new Map<string, Fixture>();
-  for (const list of lists) {
-    for (const f of list) byId.set(f.id, f);
+  for (const r of settled) {
+    if (r.status !== "fulfilled") continue;
+    for (const f of r.value) byId.set(f.id, f);
   }
   // This function runs in UTC and cannot know the viewer's timezone, so don't
   // filter by date here. Return the whole 3-UTC-day window and let the browser
   // pick the fixtures that fall on its LOCAL date.
   return [...byId.values()];
+}
+
+async function fetchBbcWindow(date: string): Promise<Fixture[]> {
+  const settled = await Promise.allSettled(
+    utcWindowDates(date).map((d) => fetchBbcFixtures(d))
+  );
+  const out: Fixture[] = [];
+  for (const r of settled) {
+    if (r.status === "fulfilled") out.push(...r.value);
+  }
+  return out;
 }
 
 export async function GET(request: NextRequest) {
@@ -68,7 +82,7 @@ export async function GET(request: NextRequest) {
 
   const [espnResult, bbcResult] = await Promise.all([
     Promise.allSettled(slugs.map((slug) => fetchLeague(slug, date))),
-    fetchBbcFixtures(date).then(
+    fetchBbcWindow(date).then(
       (v) => ({ ok: true as const, value: v }),
       (e) => ({ ok: false as const, error: e as Error })
     ),
