@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import {
   Swords,
   ShieldCheck,
@@ -166,9 +167,26 @@ function LiveDuelBadge() {
 function LiveDuelBody() {
   const { data: bets } = useBets();
   const { byDate } = useMatchGates(bets);
-  const live = (bets || []).find(
+
+  // Rotate through every open/active duel instead of always showing the newest.
+  const active = (bets || []).filter(
     (b) => b.status === "OPEN" || b.status === "JOINED"
   );
+  const [idx, setIdx] = useState(0);
+
+  useEffect(() => {
+    if (active.length <= 1) {
+      setIdx(0);
+      return;
+    }
+    setIdx((i) => Math.min(i, active.length - 1));
+    const t = setInterval(() => {
+      setIdx((i) => (i + 1) % active.length);
+    }, 4500);
+    return () => clearInterval(t);
+  }, [active.length]);
+
+  const live = active[idx] ?? active[0];
 
   if (!live) {
     return (
@@ -265,21 +283,41 @@ function LiveDuelBody() {
   });
 
   return (
-    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-      {box1}
+    <>
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+        {box1}
 
-      <div className="text-center">
-        <div className="chip chip-gold w-14 h-14 mx-auto text-lg font-bold animate-float">
-          2x
+        <div className="text-center">
+          <div className="chip chip-gold w-14 h-14 mx-auto text-lg font-bold animate-float">
+            2x
+          </div>
+          <div className="mt-2 text-[10px] uppercase tracking-widest text-muted-foreground">
+            {statusLabel} pot
+          </div>
+          {creatorOnDraw && creatorChip}
         </div>
-        <div className="mt-2 text-[10px] uppercase tracking-widest text-muted-foreground">
-          {statusLabel} pot
-        </div>
-        {creatorOnDraw && creatorChip}
+
+        {box2}
       </div>
 
-      {box2}
-    </div>
+      {active.length > 1 && (
+        <div className="mt-4 flex items-center justify-center gap-1.5">
+          {active.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setIdx(i)}
+              aria-label={`Show active duel ${i + 1}`}
+              title={`Duel ${i + 1} of ${active.length}`}
+              className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
+                i === idx
+                  ? "w-5 bg-gold"
+                  : "w-1.5 bg-white/25 hover:bg-white/50"
+              }`}
+            />
+          ))}
+        </div>
+      )}
+    </>
   );
 }
 

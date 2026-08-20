@@ -98,15 +98,10 @@ export function BetsGrid() {
       return;
     }
 
+    // No browser confirm here: joining is a wallet transaction and the join
+    // hook surfaces its own success/error toasts + the wallet's own popup.
     const side = oppositeSide(bet.creator_side);
-    const confirmed = confirm(
-      `Join "${bet.team1} vs ${bet.team2}" for ${formatWei(
-        bet.amount
-      )} on side "${sideName(side, bet)}"?`
-    );
-    if (confirmed) {
-      joinBet({ betId: bet.id, side });
-    }
+    joinBet({ betId: bet.id, side });
   };
 
   const handleResolve = (betId: string) => {
