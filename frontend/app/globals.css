@@ -131,6 +131,7 @@
   --color-felt: oklch(0.40 0.12 155);
   --color-felt-dark: oklch(0.24 0.07 155);
   --color-win: oklch(0.68 0.17 155);
+  --color-loss: oklch(0.64 0.19 27);
 }
 
 @layer base {

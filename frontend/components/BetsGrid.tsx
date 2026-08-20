@@ -357,6 +357,24 @@ function BetCard({
       ? [matchScore1, matchScore2]
       : null;
 
+  // WON / LOSE verdict for the current user, kept visible on the card after
+  // the bet is resolved. Non-participants see no verdict badge.
+  const userSide = isCreator
+    ? bet.creator_side
+    : isOpponent
+      ? bet.opponent_side
+      : null;
+  const verdict: "won" | "lost" | "draw" | "refund" | null =
+    bet.status === "RESOLVED" && userSide
+      ? bet.real_winner === "REFUND"
+        ? "refund"
+        : bet.real_winner === "0"
+          ? "draw"
+          : userSide === bet.real_winner
+            ? "won"
+            : "lost"
+      : null;
+
   let action: React.ReactNode = null;
   if (bet.status === "OPEN") {
     if (expired && isConnected && currentAddress && !isWalletLoading) {
@@ -684,10 +702,35 @@ function BetCard({
 
       {/* Resolved outcome */}
       {bet.status === "RESOLVED" && (
-        <div className="mt-3 rounded-lg felt-panel px-3 py-2 text-xs space-y-0.5">
+        <div className="mt-3 rounded-lg felt-panel px-3 py-2 text-xs space-y-1.5">
+          {verdict && (
+            <div>
+              {verdict === "won" && (
+                <Badge className="bg-win/20 text-win border-win/40 uppercase tracking-wider">
+                  <Trophy className="w-3 h-3 mr-1" />
+                  You won
+                </Badge>
+              )}
+              {verdict === "lost" && (
+                <Badge className="bg-loss/20 text-loss border-loss/40 uppercase tracking-wider">
+                  You lost
+                </Badge>
+              )}
+              {verdict === "draw" && (
+                <Badge className="bg-yellow-500/15 text-yellow-400 border-yellow-500/40 uppercase tracking-wider">
+                  Draw
+                </Badge>
+              )}
+              {verdict === "refund" && (
+                <Badge className="text-muted-foreground border-white/20 uppercase tracking-wider">
+                  Refunded
+                </Badge>
+              )}
+            </div>
+          )}
           {bet.real_winner === "REFUND" ? (
             <div className="text-muted-foreground">
-              Refunded (settlement window passed)
+              Settlement window passed — stake returned
             </div>
           ) : bet.real_winner === "0" ? (
             <>
