@@ -262,6 +262,10 @@ export function BetsGrid() {
               crest1={crestFor(bet, "home")}
               crest2={crestFor(bet, "away")}
               kickoffLabel={fixtureKickoffLabel(fixtureFor(bet))}
+              matchState={fixtureFor(bet)?.state}
+              matchScore1={fixtureFor(bet)?.score1}
+              matchScore2={fixtureFor(bet)?.score2}
+              matchStatusDetail={fixtureFor(bet)?.statusDetail}
               isOwner={isOwner}
               busy={isJoining || isResolving || isCanceling || isRefunding}
               busyTarget={
@@ -321,6 +325,10 @@ interface BetCardProps {
   crest1?: string;
   crest2?: string;
   kickoffLabel?: string;
+  matchState?: "pre" | "in" | "post";
+  matchScore1?: string;
+  matchScore2?: string;
+  matchStatusDetail?: string;
   isOwner: boolean;
   busy: boolean;
   busyTarget: string | null;
@@ -340,6 +348,10 @@ function BetCard({
   crest1,
   crest2,
   kickoffLabel,
+  matchState,
+  matchScore1,
+  matchScore2,
+  matchStatusDetail,
   isOwner,
   busy,
   busyTarget,
@@ -351,6 +363,12 @@ function BetCard({
   const isOpponent = me(bet.opponent);
   const isBusy = busy && busyTarget === bet.id;
   const expiredJoined = bet.status === "JOINED" && expired;
+  const matchLive = matchState === "in";
+  const matchFinished = matchState === "post";
+  const matchScore =
+    matchScore1 !== undefined && matchScore2 !== undefined
+      ? [matchScore1, matchScore2]
+      : null;
 
   let action: React.ReactNode = null;
   if (bet.status === "OPEN") {
@@ -501,13 +519,30 @@ function BetCard({
 
   return (
     <div
-      className={`brand-card brand-card-hover p-4 flex flex-col animate-fade-in ${
+      className={`brand-card brand-card-hover p-5 flex flex-col animate-fade-in ${
         expiredJoined ? "border-amber-500/40" : ""
       }`}
     >
-      {/* Top row: status + copy ID */}
-      <div className="flex items-center justify-between gap-2 mb-2.5">
-        {statusBadge(bet.status)}
+      {/* Top row: bet status + match state + copy ID */}
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <div className="flex items-center gap-1.5 min-w-0">
+          {statusBadge(bet.status)}
+          {(matchLive || matchFinished) && (
+            <Badge
+              variant={matchLive ? undefined : "outline"}
+              className={
+                matchLive
+                  ? "bg-win/20 text-win border-win/40 uppercase tracking-wider"
+                  : "text-muted-foreground border-white/20 uppercase tracking-wider"
+              }
+            >
+              {matchLive && (
+                <span className="w-1.5 h-1.5 rounded-full bg-win animate-pulse mr-1.5" />
+              )}
+              {matchLive ? matchStatusDetail || "LIVE" : "FINAL"}
+            </Badge>
+          )}
+        </div>
         <button
           onClick={() => {
             copyText(bet.id);
@@ -516,36 +551,59 @@ function BetCard({
             });
           }}
           title="Copy bet ID — share it with your rival"
-          className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-gold transition-colors cursor-pointer"
+          className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-gold transition-colors cursor-pointer shrink-0"
         >
           <Copy className="w-3 h-3" />
           <code className="font-mono">{truncateBetId(bet.id)}</code>
         </button>
       </div>
 
-      {/* Teams + crests */}
-      <div className="flex items-center justify-center gap-2.5 py-1">
-        <TeamCrest name={bet.team1} logo={crest1} size={28} />
-        <div className="flex-1 min-w-0 text-right font-display font-semibold text-base truncate">
+      {/* Teams + crests + score */}
+      <div className="flex items-center justify-center gap-3 py-1">
+        <TeamCrest name={bet.team1} logo={crest1} size={38} />
+        <div className="flex-1 min-w-0 text-right font-display font-bold text-lg truncate">
           {bet.team1}
         </div>
-        <div className="inline-flex items-center gap-1 rounded-full border border-gold/40 bg-gold/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-gold shrink-0">
-          <Swords className="w-3 h-3" />
-          vs
-        </div>
-        <div className="flex-1 min-w-0 font-display font-semibold text-base truncate">
+
+        {matchScore ? (
+          <div className="flex flex-col items-center shrink-0 w-[4.5rem]">
+            <div className="font-display font-bold text-2xl leading-none tracking-tight">
+              <span className={matchLive ? "text-win" : "text-foreground"}>
+                {matchScore[0]}
+              </span>
+              <span className="mx-1 text-gold">-</span>
+              <span className={matchLive ? "text-win" : "text-foreground"}>
+                {matchScore[1]}
+              </span>
+            </div>
+            <span
+              className={`mt-1 text-[10px] font-bold uppercase tracking-wider ${
+                matchLive ? "text-win" : "text-muted-foreground"
+              }`}
+            >
+              {matchLive ? matchStatusDetail || "LIVE" : "FT"}
+            </span>
+          </div>
+        ) : (
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-gold/40 bg-gold/15 px-3 py-1 text-xs font-bold uppercase tracking-wider text-gold shrink-0">
+            <Swords className="w-3.5 h-3.5" />
+            vs
+          </div>
+        )}
+
+        <div className="flex-1 min-w-0 font-display font-bold text-lg truncate">
           {bet.team2}
         </div>
-        <TeamCrest name={bet.team2} logo={crest2} size={28} />
+        <TeamCrest name={bet.team2} logo={crest2} size={38} />
       </div>
 
       {/* Handicap line */}
       {(() => {
         const voor = handicapLabel(bet);
         return voor ? (
-          <div className="mt-1.5 text-center">
-            <span className="inline-flex items-center gap-1 rounded-full border border-gold/30 bg-gold/10 px-2 py-0.5 text-[10px] font-semibold text-gold">
-              <Target className="w-2.5 h-2.5" />
+          <div className="mt-2 text-center">
+            <span className="inline-flex items-center gap-1 rounded-full border border-gold/30 bg-gold/10 px-2.5 py-0.5 text-[11px] font-semibold text-gold">
+              <Target className="w-3 h-3" />
               Voor: {voor}
             </span>
           </div>
@@ -553,7 +611,7 @@ function BetCard({
       })()}
 
       {/* Meta grid */}
-      <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
+      <div className="mt-3.5 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
         <div className="flex items-center justify-between gap-2">
           <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
             Stake
@@ -569,7 +627,7 @@ function BetCard({
           <span className="font-semibold text-right">
             {bet.game_date}
             {kickoffLabel ? (
-              <span className="block text-[10px] text-muted-foreground">
+              <span className="block text-[11px] text-muted-foreground">
                 {kickoffLabel}
               </span>
             ) : null}
@@ -600,7 +658,7 @@ function BetCard({
       </div>
 
       {/* Players */}
-      <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
+      <div className="mt-3 flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-xs text-muted-foreground">
         <span className="text-[10px] uppercase tracking-wider">Creator</span>
         <AddressDisplay address={bet.creator} maxLength={8} />
         {isCreator && (
@@ -630,7 +688,7 @@ function BetCard({
           href={bet.resolution_url}
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-2 inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-gold transition-colors"
+          className="mt-2.5 inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-gold transition-colors"
         >
           <ExternalLink className="w-3 h-3" />
           {truncateUrl(bet.resolution_url)}
@@ -639,7 +697,7 @@ function BetCard({
 
       {/* Resolved outcome */}
       {bet.status === "RESOLVED" && (
-        <div className="mt-2.5 rounded-lg felt-panel px-2.5 py-1.5 text-[11px] space-y-0.5">
+        <div className="mt-3 rounded-lg felt-panel px-3 py-2 text-xs space-y-0.5">
           {bet.real_winner === "REFUND" ? (
             <div className="text-muted-foreground">
               Refunded (settlement window passed)
@@ -650,7 +708,7 @@ function BetCard({
                 Score {bet.real_score} —{" "}
                 <span className="text-yellow-400 font-semibold">Draw</span>
               </div>
-              <div className="text-[10px] text-muted-foreground">
+              <div className="text-[11px] text-muted-foreground">
                 Both stakes refunded, no fee
               </div>
             </>
@@ -662,7 +720,7 @@ function BetCard({
                   {sideName(bet.real_winner, bet)} {bet.real_score}
                 </span>
               </div>
-              <div className="text-[10px] text-muted-foreground">
+              <div className="text-[11px] text-muted-foreground">
                 Payout {formatWei(payoutOf(bet.amount))} ·{" "}
                 <span className="text-gold">
                   fee {formatWei(feeOf(bet.amount))}
@@ -674,7 +732,7 @@ function BetCard({
       )}
 
       {expiredJoined && (
-        <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-amber-400">
+        <div className="mt-2 flex items-center gap-1.5 text-[11px] text-amber-400">
           <Clock className="w-3 h-3" />
           Settlement window passed — refund available
         </div>
@@ -682,7 +740,7 @@ function BetCard({
 
       {/* Action */}
       {action && (
-        <div className="mt-3 pt-3 border-t border-white/10">{action}</div>
+        <div className="mt-3.5 pt-3.5 border-t border-white/10">{action}</div>
       )}
     </div>
   );
