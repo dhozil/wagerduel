@@ -79,11 +79,8 @@ export function JoinBetByID() {
     }
 
     const side = oppositeSide(b.creator_side);
-    const confirmed = confirm(
-      `Join "${b.team1} vs ${b.team2}" for ${formatWei(b.amount)} on side "${sideName(side, b)}"?`
-    );
-    if (!confirmed) return;
-
+    // No browser confirm here: joining is a wallet transaction and the join
+    // hook surfaces its own success/error toasts + the wallet's own popup.
     joinBet({ betId: b.id, side });
   };
 

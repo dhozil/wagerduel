@@ -104,17 +104,14 @@ export function BetsGrid() {
     joinBet({ betId: bet.id, side });
   };
 
+  // No browser confirms here: these are wallet transactions and the action
+  // hooks surface their own success/error toasts + the wallet's own popup.
   const handleResolve = (betId: string) => {
     if (!address) {
       error("Please connect your wallet to resolve bets");
       return;
     }
-    const confirmed = confirm(
-      "Resolve this bet? GenLayer's AI will verify the real match result and pay the winner."
-    );
-    if (confirmed) {
-      resolveBet(betId);
-    }
+    resolveBet(betId);
   };
 
   const handleCancel = (betId: string) => {
@@ -122,12 +119,7 @@ export function BetsGrid() {
       error("Please connect your wallet to cancel bets");
       return;
     }
-    const confirmed = confirm(
-      "Cancel this bet? Your stake will be returned to your wallet."
-    );
-    if (confirmed) {
-      cancelBet(betId);
-    }
+    cancelBet(betId);
   };
 
   const handleRefundExpired = (bet: Bet) => {
@@ -135,12 +127,7 @@ export function BetsGrid() {
       error("Please connect your wallet to refund bets");
       return;
     }
-    const confirmed = confirm(
-      `The settlement window for "${bet.team1} vs ${bet.team2}" has passed. Refund the staked funds?`
-    );
-    if (confirmed) {
-      refundExpired(bet.id);
-    }
+    refundExpired(bet.id);
   };
 
   if (isLoading) {
