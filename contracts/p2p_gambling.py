@@ -123,19 +123,59 @@ class P2PGambling(gl.Contract):
         self.owner = gl.message.sender_address
 
     def _verify_fixtures(
-        self, game_date: str, team1: str, team2: str, resolution_url: str
+        self,
+        game_date: str,
+        team1: str,
+        team2: str,
+        resolution_url: str,
+        kickoff_utc: str = "",
     ) -> bool:
         """Verify that team1 vs team2 appears in the real fixtures for game_date.
 
         Fetches the resolution URL page and uses an LLM to extract the fixtures.
-        Returns True only if both team names match a real fixture on that date.
-        This prevents spam bets with fabricated team names.
+        When ``kickoff_utc`` is provided, the LLM must also confirm that the
+        supplied kickoff matches the kickoff shown on the page (within ~90
+        minutes), so a bet creator cannot forge a future kickoff to keep the
+        duel joinable after the match has started.
+
+        Returns True only if both team names match a real fixture on that date
+        AND (when kickoff is supplied) the kickoff matches the fixture.
+        This prevents spam bets with fabricated team names and fabricated
+        kickoff timestamps.
         """
 
         def leader_fn():
             web_data = gl.nondet.web.render(resolution_url, mode="text")
 
-            prompt = f"""You are a football fixture verifier. Below is a fixtures/scores
+            if kickoff_utc:
+                prompt = f"""You are a football fixture verifier. Below is a fixtures/scores
+page for the date {game_date}.
+
+Web content:
+{web_data}
+
+Check if a match between "{team1}" and "{team2}" exists on this page.
+The team names may appear in different casings or with slight formatting
+differences (e.g. "Man City" vs "Manchester City"). Be lenient — accept
+reasonable abbreviations and common short forms.
+
+Separately, the bet creator claims this match kicks off at {kickoff_utc}
+(UTC). Independently check the page whether this kickoff matches the
+scheduled kickoff shown for that match within about 90 minutes. The page may
+show the kickoff in a local/venue timezone — convert it to UTC using your
+understanding of the competition/venue. If the page does not show a kickoff
+time for the match, set valid_kickoff to true (nothing to cross-check).
+
+Respond in JSON with exactly these keys:
+{{
+    "valid": true|false,
+    "valid_kickoff": true|false
+}}
+It is mandatory that you respond only using the JSON format above. Do not
+include any other words or characters, no markdown code fences, no commentary.
+"""
+            else:
+                prompt = f"""You are a football fixture verifier. Below is a fixtures/scores
 page for the date {game_date}.
 
 Web content:
@@ -154,6 +194,11 @@ It is mandatory that you respond only using the JSON format above. Do not
 include any other words or characters, no markdown code fences, no commentary.
 """
             result = gl.nondet.exec_prompt(prompt, response_format="json")
+            if kickoff_utc:
+                return {
+                    "valid": bool(result.get("valid", False)),
+                    "valid_kickoff": bool(result.get("valid_kickoff", False)),
+                }
             return bool(result.get("valid", False))
 
         def validator_fn(leader_result) -> bool:
@@ -162,7 +207,12 @@ include any other words or characters, no markdown code fences, no commentary.
             my_result = leader_fn()
             return leader_result.calldata == my_result
 
-        return gl.vm.run_nondet_unsafe(leader_fn, validator_fn)
+        verified = gl.vm.run_nondet_unsafe(leader_fn, validator_fn)
+        if kickoff_utc:
+            return bool(verified.get("valid", False)) and bool(
+                verified.get("valid_kickoff", False)
+            )
+        return bool(verified)
 
     def _fetch_match_result(self, resolution_url: str, team1: str, team2: str) -> dict:
         def leader_fn():
@@ -289,6 +339,13 @@ any other words or characters, no markdown code fences, no commentary.
                 raise gl.vm.UserError(
                     "Kickoff time must be a valid ISO 8601 UTC timestamp"
                 )
+            # Bind the kickoff to the committed match date so a bet creator cannot
+            # push the cutoff arbitrarily far into the future, which would keep the
+            # duel joinable after the match has already started/finished.
+            if abs(kickoff_dt.date() - parsed_date) > timedelta(days=1):
+                raise gl.vm.UserError(
+                    "Kickoff time must be on or near the match date"
+                )
         else:
             kickoff_dt = None
 
@@ -298,8 +355,11 @@ any other words or characters, no markdown code fences, no commentary.
         if self.balances.get(sender, 0) < amount:
             raise gl.vm.UserError("Insufficient balance")
 
-        # Verify teams exist in real fixtures for this date
-        if not self._verify_fixtures(game_date, team1, team2, resolution_url):
+        # Verify teams exist in real fixtures for this date (and that the
+        # supplied kickoff matches the fixture when one is provided).
+        if not self._verify_fixtures(
+            game_date, team1, team2, resolution_url, kickoff_utc
+        ):
             raise gl.vm.UserError(
                 "Teams not found in fixtures for this date"
             )

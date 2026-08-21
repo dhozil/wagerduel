@@ -38,6 +38,11 @@
   (1) reject if match kickoff has passed (datetime-level via `kickoff_utc`, or
   date-only fallback), (2) reject if settlement window has passed ("use refund").
   Late entry is impossible.
+- **Kickoff anti-forgery** — the `kickoff_utc` stored on-chain is not taken on
+  faith: it is bound to the match date (a far-future kickoff is rejected at
+  create time) and validator-checked against the fetched fixture (an invented
+  kickoff that doesn't match the page is rejected). A false future kickoff
+  cannot keep a duel joinable after the match has started.
 - **Past date rejection** — `create_bet` rejects game dates in the past,
   preventing spam with old or fabricated dates.
 - **Fair head-to-head rules** — opponents must bet on opposite outcomes

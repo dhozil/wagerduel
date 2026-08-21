@@ -56,7 +56,7 @@ def _mock_fixtures_web(direct_vm):
     })
     direct_vm.mock_llm(
         r".*football fixture verifier.*",
-        '{"valid": true}',
+        '{"valid": true, "valid_kickoff": true}',
     )
 
 

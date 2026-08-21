@@ -10,11 +10,70 @@ We create bets with FUTURE game_dates (passes create_bet validation), then
 warp time past the match kickoff to verify join_bet correctly rejects them.
 """
 
-from tests.direct.conftest import RESOLUTION_URL, fund, warp_datetime
+from tests.direct.conftest import (
+    FIXTURES_MOCK_HTML,
+    RESOLUTION_URL,
+    fund,
+    warp_datetime,
+)
 
 AMOUNT = 1000
 GAME_DATE = "2050-06-20"
 KICKOFF_UTC = "2050-06-20T18:00:00Z"  # 18:00 UTC on match day
+
+
+def test_create_bet_false_future_kickoff_reverts(
+    direct_vm, direct_deploy, direct_alice
+):
+    """A bet creator must not be able to push kickoff far into the future.
+
+    Binding the kickoff to the match date is deterministic — a kickoff that is
+    not on/near game_date is rejected at create time, so a false future
+    kickoff can never be used to keep the duel joinable after the match.
+    """
+    contract = direct_deploy("contracts/p2p_gambling.py")
+    fund(direct_vm, contract, direct_alice, AMOUNT * 5)
+    direct_vm.sender = direct_alice
+
+    # Same match, but kickoff forged 50 years in the future.
+    with direct_vm.expect_revert("Kickoff time must be on or near the match date"):
+        contract.create_bet(
+            GAME_DATE, "TeamA", "TeamB", "1", RESOLUTION_URL, AMOUNT,
+            kickoff_utc="2100-01-01T00:00:00Z",
+        )
+
+
+def test_create_bet_forged_kickoff_not_matching_fixture_reverts(
+    direct_vm, direct_deploy, direct_alice
+):
+    """A same-day kickoff that does not match the fixture is rejected.
+
+    Even when the kickoff is bound to the match date, the validator must
+    cross-check it against the fetched fixture — a creator cannot invent a
+    later kickoff on match day to permit betting on a known result.
+    """
+    contract = direct_deploy("contracts/p2p_gambling.py")
+    fund(direct_vm, contract, direct_alice, AMOUNT * 5)
+
+    # Override autouse mocks: teams are valid, but the supplied kickoff does
+    # not match the fixture page (valid_kickoff=false).
+    direct_vm.clear_mocks()
+    direct_vm.mock_web(r".*bbc\.com.*scores-fixtures.*", {
+        "status": 200,
+        "body": FIXTURES_MOCK_HTML,
+    })
+    direct_vm.mock_llm(
+        r".*football fixture verifier.*",
+        '{"valid": true, "valid_kickoff": false}',
+    )
+    direct_vm.sender = direct_alice
+
+    with direct_vm.expect_revert("Teams not found in fixtures for this date"):
+        contract.create_bet(
+            GAME_DATE, "TeamA", "TeamB", "1", RESOLUTION_URL, AMOUNT,
+            kickoff_utc="2050-06-20T21:00:00Z",
+        )
+
 
 
 def test_join_bet_before_match_still_works(direct_vm, direct_deploy, direct_alice, direct_bob):
