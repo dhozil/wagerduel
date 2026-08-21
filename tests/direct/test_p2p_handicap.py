@@ -5,7 +5,7 @@ import json
 from tests.direct.conftest import RESOLUTION_URL, fund, to_hex
 
 AMOUNT = 1000
-GAME_DATE = "2024-06-20"
+GAME_DATE = "2050-06-20"
 
 
 def _joined(
@@ -61,9 +61,9 @@ def test_handicap_makes_win_a_draw_refund_both(
     _joined(direct_vm, contract, direct_alice, direct_bob, handicap_halves=2)
     _mock(direct_vm, "2:1", 1)
 
-    contract.resolve_bet("2024-06-20_spain_italy")
+    contract.resolve_bet("2050-06-20_spain_italy")
 
-    bet = contract.get_bet("2024-06-20_spain_italy")
+    bet = contract.get_bet("2050-06-20_spain_italy")
     assert bet["status"] == "RESOLVED"
     assert bet["real_winner"] == "0"
     assert bet["winner"] == "0x0000000000000000000000000000000000000000"
@@ -81,9 +81,9 @@ def test_handicap_creator_still_wins_when_covering(
     _joined(direct_vm, contract, direct_alice, direct_bob, handicap_halves=2)
     _mock(direct_vm, "3:0", 1)
 
-    contract.resolve_bet("2024-06-20_spain_italy")
+    contract.resolve_bet("2050-06-20_spain_italy")
 
-    bet = contract.get_bet("2024-06-20_spain_italy")
+    bet = contract.get_bet("2050-06-20_spain_italy")
     assert bet["real_winner"] == "1"
     assert bet["winner"] == to_hex(direct_alice)
     assert contract.get_balance(to_hex(direct_alice)) == (
@@ -99,9 +99,9 @@ def test_handicap_flips_winner_to_opponent(
     _joined(direct_vm, contract, direct_alice, direct_bob, handicap_halves=4)
     _mock(direct_vm, "0:1", 2)
 
-    contract.resolve_bet("2024-06-20_spain_italy")
+    contract.resolve_bet("2050-06-20_spain_italy")
 
-    bet = contract.get_bet("2024-06-20_spain_italy")
+    bet = contract.get_bet("2050-06-20_spain_italy")
     assert bet["real_winner"] == "2"
     assert bet["winner"] == to_hex(direct_bob)
     assert contract.get_balance(to_hex(direct_bob)) == (
@@ -117,9 +117,9 @@ def test_handicap_half_goal_creator_wins(
     _joined(direct_vm, contract, direct_alice, direct_bob, handicap_halves=1)
     _mock(direct_vm, "2:1", 1)
 
-    contract.resolve_bet("2024-06-20_spain_italy")
+    contract.resolve_bet("2050-06-20_spain_italy")
 
-    bet = contract.get_bet("2024-06-20_spain_italy")
+    bet = contract.get_bet("2050-06-20_spain_italy")
     assert bet["real_winner"] == "1"
     assert bet["winner"] == to_hex(direct_alice)
 
@@ -132,9 +132,9 @@ def test_handicap_half_goal_opponent_wins(
     _joined(direct_vm, contract, direct_alice, direct_bob, handicap_halves=1)
     _mock(direct_vm, "1:1", 0)
 
-    contract.resolve_bet("2024-06-20_spain_italy")
+    contract.resolve_bet("2050-06-20_spain_italy")
 
-    bet = contract.get_bet("2024-06-20_spain_italy")
+    bet = contract.get_bet("2050-06-20_spain_italy")
     assert bet["real_winner"] == "2"
     assert bet["winner"] == to_hex(direct_bob)
 
@@ -156,9 +156,9 @@ def test_handicap_to_team1_via_negative_halves(
     # Real 1-1, adjusted Team 1 (1+1) 2 vs Team 2 1 -> Team 1 (opponent) wins.
     _mock(direct_vm, "1:1", 0)
 
-    contract.resolve_bet("2024-06-20_spain_italy")
+    contract.resolve_bet("2050-06-20_spain_italy")
 
-    bet = contract.get_bet("2024-06-20_spain_italy")
+    bet = contract.get_bet("2050-06-20_spain_italy")
     assert bet["real_winner"] == "1"
     assert bet["winner"] == to_hex(direct_bob)
     assert contract.get_balance(to_hex(direct_bob)) == (
@@ -174,9 +174,9 @@ def test_handicap_zero_uses_verified_verdict(
     _joined(direct_vm, contract, direct_alice, direct_bob, handicap_halves=0)
     _mock(direct_vm, "2:1", 1)
 
-    contract.resolve_bet("2024-06-20_spain_italy")
+    contract.resolve_bet("2050-06-20_spain_italy")
 
-    bet = contract.get_bet("2024-06-20_spain_italy")
+    bet = contract.get_bet("2050-06-20_spain_italy")
     assert bet["real_winner"] == "1"
     assert bet["winner"] == to_hex(direct_alice)
 
@@ -211,5 +211,5 @@ def test_get_bet_exposes_handicap(direct_vm, direct_deploy, direct_alice):
     direct_vm.sender = direct_alice
     contract.create_bet(GAME_DATE, "Spain", "Italy", "1", RESOLUTION_URL, AMOUNT, 2)
 
-    bet = contract.get_bet("2024-06-20_spain_italy")
+    bet = contract.get_bet("2050-06-20_spain_italy")
     assert bet["handicap_halves"] == 2

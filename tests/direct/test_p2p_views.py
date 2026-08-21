@@ -24,13 +24,13 @@ def test_get_bets_after_create(direct_vm, direct_deploy, direct_alice):
     contract = direct_deploy("contracts/p2p_gambling.py")
     fund(direct_vm, contract, direct_alice, AMOUNT * 5)
     direct_vm.sender = direct_alice
-    contract.create_bet("2024-06-20", "Spain", "Italy", "1", RESOLUTION_URL, AMOUNT)
+    contract.create_bet("2050-06-20", "Spain", "Italy", "1", RESOLUTION_URL, AMOUNT)
 
     bets = contract.get_bets()
-    assert "2024-06-20_spain_italy" in bets
-    assert bets["2024-06-20_spain_italy"]["team1"] == "Spain"
-    assert bets["2024-06-20_spain_italy"]["creator_side"] == "1"
-    assert bets["2024-06-20_spain_italy"]["status"] == "OPEN"
+    assert "2050-06-20_spain_italy" in bets
+    assert bets["2050-06-20_spain_italy"]["team1"] == "Spain"
+    assert bets["2050-06-20_spain_italy"]["creator_side"] == "1"
+    assert bets["2050-06-20_spain_italy"]["status"] == "OPEN"
     assert len(bets) == 1
 
 
@@ -55,14 +55,14 @@ def test_view_does_not_change_state(direct_vm, direct_deploy, direct_alice):
     contract = direct_deploy("contracts/p2p_gambling.py")
     fund(direct_vm, contract, direct_alice, AMOUNT * 5)
     direct_vm.sender = direct_alice
-    contract.create_bet("2024-06-20", "Spain", "Italy", "1", RESOLUTION_URL, AMOUNT)
+    contract.create_bet("2050-06-20", "Spain", "Italy", "1", RESOLUTION_URL, AMOUNT)
 
     contract.get_bets()
     contract.get_total_escrow()
     contract.get_balance(to_hex(direct_alice))
     contract.get_owner_fees()
     contract.get_owner()
-    contract.get_bet("2024-06-20_spain_italy")
+    contract.get_bet("2050-06-20_spain_italy")
 
     assert contract.get_total_escrow() == AMOUNT
-    assert contract.get_bet("2024-06-20_spain_italy")["status"] == "OPEN"
+    assert contract.get_bet("2050-06-20_spain_italy")["status"] == "OPEN"

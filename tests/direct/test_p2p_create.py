@@ -16,9 +16,9 @@ def test_create_bet(direct_vm, direct_deploy, direct_alice):
     _ready(direct_vm, contract, direct_alice)
     direct_vm.sender = direct_alice
 
-    contract.create_bet("2024-06-20", "Spain", "Italy", "1", RESOLUTION_URL, AMOUNT)
+    contract.create_bet("2050-06-20", "Spain", "Italy", "1", RESOLUTION_URL, AMOUNT)
 
-    bet = contract.get_bet("2024-06-20_spain_italy")
+    bet = contract.get_bet("2050-06-20_spain_italy")
     assert bet["team1"] == "Spain"
     assert bet["team2"] == "Italy"
     assert bet["creator_side"] == "1"
@@ -43,7 +43,7 @@ def test_create_bet_insufficient_balance_reverts(
     direct_vm.sender = direct_alice
 
     with direct_vm.expect_revert("Insufficient balance"):
-        contract.create_bet("2024-06-20", "Spain", "Italy", "1", RESOLUTION_URL, AMOUNT)
+        contract.create_bet("2050-06-20", "Spain", "Italy", "1", RESOLUTION_URL, AMOUNT)
 
 
 def test_create_bet_zero_amount_reverts(direct_vm, direct_deploy, direct_alice):
@@ -52,7 +52,7 @@ def test_create_bet_zero_amount_reverts(direct_vm, direct_deploy, direct_alice):
     direct_vm.sender = direct_alice
 
     with direct_vm.expect_revert("Bet amount must be greater than 0"):
-        contract.create_bet("2024-06-20", "Spain", "Italy", "1", RESOLUTION_URL, 0)
+        contract.create_bet("2050-06-20", "Spain", "Italy", "1", RESOLUTION_URL, 0)
 
 
 def test_create_bet_invalid_side_reverts(direct_vm, direct_deploy, direct_alice):
@@ -61,7 +61,7 @@ def test_create_bet_invalid_side_reverts(direct_vm, direct_deploy, direct_alice)
     direct_vm.sender = direct_alice
 
     with direct_vm.expect_revert("Side must be '1', '2', or '0'"):
-        contract.create_bet("2024-06-20", "Spain", "Italy", "3", RESOLUTION_URL, AMOUNT)
+        contract.create_bet("2050-06-20", "Spain", "Italy", "3", RESOLUTION_URL, AMOUNT)
 
 
 def test_create_bet_duplicate_match_reverts(direct_vm, direct_deploy, direct_alice):
@@ -69,10 +69,10 @@ def test_create_bet_duplicate_match_reverts(direct_vm, direct_deploy, direct_ali
     _ready(direct_vm, contract, direct_alice)
     direct_vm.sender = direct_alice
 
-    contract.create_bet("2024-06-20", "Spain", "Italy", "1", RESOLUTION_URL, AMOUNT)
+    contract.create_bet("2050-06-20", "Spain", "Italy", "1", RESOLUTION_URL, AMOUNT)
 
     with direct_vm.expect_revert("A bet for this match already exists"):
-        contract.create_bet("2024-06-20", "Spain", "Italy", "2", RESOLUTION_URL, AMOUNT)
+        contract.create_bet("2050-06-20", "Spain", "Italy", "2", RESOLUTION_URL, AMOUNT)
 
 
 def test_create_bet_draw_side_allowed(direct_vm, direct_deploy, direct_alice):
@@ -80,9 +80,9 @@ def test_create_bet_draw_side_allowed(direct_vm, direct_deploy, direct_alice):
     _ready(direct_vm, contract, direct_alice)
     direct_vm.sender = direct_alice
 
-    contract.create_bet("2024-06-20", "Denmark", "England", "0", RESOLUTION_URL, AMOUNT)
+    contract.create_bet("2050-06-20", "Denmark", "England", "0", RESOLUTION_URL, AMOUNT)
 
-    bet = contract.get_bet("2024-06-20_denmark_england")
+    bet = contract.get_bet("2050-06-20_denmark_england")
     assert bet["creator_side"] == "0"
     assert bet["status"] == "OPEN"
 
@@ -93,7 +93,7 @@ def test_create_bet_empty_team_reverts(direct_vm, direct_deploy, direct_alice):
     direct_vm.sender = direct_alice
 
     with direct_vm.expect_revert("Team names must be distinct and non-empty"):
-        contract.create_bet("2024-06-20", "Spain", "Spain", "1", RESOLUTION_URL, AMOUNT)
+        contract.create_bet("2050-06-20", "Spain", "Spain", "1", RESOLUTION_URL, AMOUNT)
 
 
 def test_total_escrow_accumulates(direct_vm, direct_deploy, direct_alice):
@@ -101,8 +101,8 @@ def test_total_escrow_accumulates(direct_vm, direct_deploy, direct_alice):
     _ready(direct_vm, contract, direct_alice, AMOUNT * 5)
     direct_vm.sender = direct_alice
 
-    contract.create_bet("2024-06-20", "Spain", "Italy", "1", RESOLUTION_URL, AMOUNT)
-    contract.create_bet("2024-06-20", "Denmark", "England", "0", RESOLUTION_URL, AMOUNT)
+    contract.create_bet("2050-06-20", "Spain", "Italy", "1", RESOLUTION_URL, AMOUNT)
+    contract.create_bet("2050-06-20", "Denmark", "England", "0", RESOLUTION_URL, AMOUNT)
 
     assert contract.get_total_escrow() == AMOUNT * 2
 
@@ -113,7 +113,7 @@ def test_create_bet_invalid_url_reverts(direct_vm, direct_deploy, direct_alice):
     direct_vm.sender = direct_alice
 
     with direct_vm.expect_revert("Resolution URL must use a trusted source"):
-        contract.create_bet("2024-06-20", "Spain", "Italy", "1", "not-a-url", AMOUNT)
+        contract.create_bet("2050-06-20", "Spain", "Italy", "1", "not-a-url", AMOUNT)
 
 
 def test_create_bet_untrusted_host_reverts(direct_vm, direct_deploy, direct_alice):
@@ -124,7 +124,7 @@ def test_create_bet_untrusted_host_reverts(direct_vm, direct_deploy, direct_alic
 
     with direct_vm.expect_revert("Resolution URL must use a trusted source"):
         contract.create_bet(
-            "2024-06-20",
+            "2050-06-20",
             "Spain",
             "Italy",
             "1",
@@ -141,7 +141,7 @@ def test_create_bet_spoofed_host_reverts(direct_vm, direct_deploy, direct_alice)
 
     with direct_vm.expect_revert("Resolution URL must use a trusted source"):
         contract.create_bet(
-            "2024-06-20",
+            "2050-06-20",
             "Spain",
             "Italy",
             "1",
@@ -158,14 +158,14 @@ def test_create_bet_trusted_espn_url_accepted(
     direct_vm.sender = direct_alice
 
     contract.create_bet(
-        "2024-06-20",
+        "2050-06-20",
         "Spain",
         "Italy",
         "1",
         "https://www.espn.com/soccer/match/_/gameId/12345",
         AMOUNT,
     )
-    bet = contract.get_bet("2024-06-20_spain_italy")
+    bet = contract.get_bet("2050-06-20_spain_italy")
     assert bet["resolution_url"] == "https://www.espn.com/soccer/match/_/gameId/12345"
 
 
@@ -177,14 +177,14 @@ def test_create_bet_trusted_bbc_uk_url_accepted(
     direct_vm.sender = direct_alice
 
     contract.create_bet(
-        "2024-06-20",
+        "2050-06-20",
         "Spain",
         "Italy",
         "1",
-        "https://www.bbc.co.uk/sport/football/scores-fixtures/2024-06-20",
+        "https://www.bbc.co.uk/sport/football/scores-fixtures/2050-06-20",
         AMOUNT,
     )
-    bet = contract.get_bet("2024-06-20_spain_italy")
+    bet = contract.get_bet("2050-06-20_spain_italy")
     assert "bbc.co.uk" in bet["resolution_url"]
 
 
@@ -195,11 +195,11 @@ def test_create_bet_keeps_creator_provided_url(direct_vm, direct_deploy, direct_
     direct_vm.sender = direct_alice
 
     custom_url = (
-        "https://www.bbc.com/sport/football/scores-fixtures/2024-06-20?tab=results"
+        "https://www.bbc.com/sport/football/scores-fixtures/2050-06-20?tab=results"
     )
-    contract.create_bet("2024-06-20", "Spain", "Italy", "1", custom_url, AMOUNT)
+    contract.create_bet("2050-06-20", "Spain", "Italy", "1", custom_url, AMOUNT)
 
-    bet = contract.get_bet("2024-06-20_spain_italy")
+    bet = contract.get_bet("2050-06-20_spain_italy")
     assert bet["resolution_url"] == custom_url
 
 
@@ -210,4 +210,4 @@ def test_owner_cannot_create_bet(direct_vm, direct_deploy, direct_owner):
     direct_vm.sender = direct_owner
 
     with direct_vm.expect_revert("Owner cannot place bets"):
-        contract.create_bet("2024-06-20", "Spain", "Italy", "1", RESOLUTION_URL, AMOUNT)
+        contract.create_bet("2050-06-20", "Spain", "Italy", "1", RESOLUTION_URL, AMOUNT)

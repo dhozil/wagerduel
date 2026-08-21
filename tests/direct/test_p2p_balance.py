@@ -5,8 +5,8 @@ import json
 from tests.direct.conftest import RESOLUTION_URL, fund, to_hex
 
 AMOUNT = 1000
-GAME_DATE = "2024-06-20"
-BET_ID = "2024-06-20_spain_italy"
+GAME_DATE = "2050-06-20"
+BET_ID = "2050-06-20_spain_italy"
 
 
 def test_deposit_increases_balance(direct_vm, direct_deploy, direct_alice):
@@ -171,7 +171,7 @@ def test_fee_invariant_over_two_duels(
         contract.resolve_bet(bet_id)
 
     _resolve(BET_ID, "Spain", "Italy", 1)
-    _resolve("2024-06-20_france_germany", "France", "Germany", 1)
+    _resolve("2050-06-20_france_germany", "France", "Germany", 1)
 
     pot = AMOUNT * 2
     fee = pot * 200 // 10000

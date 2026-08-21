@@ -10,7 +10,7 @@ import re
 from tests.direct.conftest import RESOLUTION_URL, fund, to_hex
 
 AMOUNT = 1000
-GAME_DATE = "2024-06-20"
+GAME_DATE = "2050-06-20"
 
 
 def _bet_key():
@@ -135,13 +135,13 @@ def test_one_time_settlement_guards(
     fund(direct_vm, contract, direct_alice, AMOUNT)
     direct_vm.sender = direct_alice
     contract.create_bet(GAME_DATE, "Denmark", "England", "1", RESOLUTION_URL, AMOUNT)
-    contract.cancel_bet("2024-06-20_denmark_england")
+    contract.cancel_bet("2050-06-20_denmark_england")
 
     with direct_vm.expect_revert("Bet must be joined by two players to resolve"):
-        contract.resolve_bet("2024-06-20_denmark_england")
+        contract.resolve_bet("2050-06-20_denmark_england")
     fund(direct_vm, contract, direct_bob, AMOUNT)
     with direct_vm.expect_revert("Bet is not open"):
-        contract.join_bet("2024-06-20_denmark_england", "2")
+        contract.join_bet("2050-06-20_denmark_england", "2")
 
 
 def test_resolution_binds_to_stored_url(
@@ -149,7 +149,7 @@ def test_resolution_binds_to_stored_url(
 ):
     """Resolution fetches the creator-submitted URL, never a derived default."""
     custom_url = (
-        "https://www.bbc.com/sport/football/scores-fixtures/2024-06-20?tab=results"
+        "https://www.bbc.com/sport/football/scores-fixtures/2050-06-20?tab=results"
     )
     contract = direct_deploy("contracts/p2p_gambling.py")
     fund(direct_vm, contract, direct_alice, AMOUNT * 5)

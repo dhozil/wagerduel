@@ -261,6 +261,20 @@ any other words or characters, no markdown code fences, no commentary.
             raise gl.vm.UserError("Bet not found")
         bet = self.bets[bet_id]
 
+        # --- Match cutoff enforcement ---
+        # 1. Settlement window passed (most specific — must use refund, not re‑join)
+        try:
+            current_date = date.fromisoformat(gl.message_raw["datetime"][:10])
+            match_date = date.fromisoformat(bet.game_date)
+        except (ValueError, TypeError, KeyError):
+            raise gl.vm.UserError("Unable to determine match timing")
+        if current_date >= match_date + timedelta(days=SETTLEMENT_WINDOW_DAYS):
+            raise gl.vm.UserError("Cannot join bet: settlement window has passed; use refund")
+        # 2. Match date passed (started or completed)
+        if current_date >= match_date:
+            raise gl.vm.UserError("Cannot join bet: match has already started or completed")
+        # --------------------------------
+
         if bet.status != STATUS_OPEN:
             raise gl.vm.UserError("Bet is not open")
         if bet.creator == gl.message.sender_address:

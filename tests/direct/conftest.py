@@ -7,7 +7,7 @@ import tempfile
 import pytest
 
 RESOLUTION_URL = (
-    "https://www.bbc.com/sport/football/scores-fixtures/2024-06-20"
+    "https://www.bbc.com/sport/football/scores-fixtures/2050-06-20"
 )
 
 

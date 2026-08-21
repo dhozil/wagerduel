@@ -5,7 +5,7 @@ import json
 from tests.direct.conftest import RESOLUTION_URL, fund, to_hex
 
 AMOUNT = 1000
-GAME_DATE = "2024-06-20"
+GAME_DATE = "2050-06-20"
 
 
 def _bet_key():
@@ -85,13 +85,13 @@ def test_resolve_draw_picked_by_creator(
     direct_vm.sender = direct_alice
     contract.create_bet(GAME_DATE, "Denmark", "England", "0", RESOLUTION_URL, AMOUNT)
     direct_vm.sender = direct_bob
-    contract.join_bet("2024-06-20_denmark_england", "1")
+    contract.join_bet("2050-06-20_denmark_england", "1")
 
     # Draw -> creator picked "0", so creator wins
     _mock(direct_vm, "1:1", 0)
-    contract.resolve_bet("2024-06-20_denmark_england")
+    contract.resolve_bet("2050-06-20_denmark_england")
 
-    bet = contract.get_bet("2024-06-20_denmark_england")
+    bet = contract.get_bet("2050-06-20_denmark_england")
     assert bet["status"] == "RESOLVED"
     assert bet["real_winner"] == "0"
     assert bet["winner"] == to_hex(direct_alice)
