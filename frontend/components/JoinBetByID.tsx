@@ -81,10 +81,6 @@ export function JoinBetByID() {
       error("This match is in progress — bet can no longer be joined");
       return;
     }
-    if (gate === "unknown") {
-      error("This match is scheduled for today — bet can no longer be joined");
-      return;
-    }
 
     const side = oppositeSide(b.creator_side);
     // No browser confirm here: joining is a wallet transaction and the join
@@ -261,16 +257,6 @@ export function JoinBetByID() {
                   >
                     <Clock className="w-4 h-4 mr-2" />
                     Match in progress
-                  </Button>
-                ) : gate === "unknown" ? (
-                  <Button
-                    disabled
-                    variant="outline"
-                    className="w-full text-muted-foreground"
-                    title="Match is scheduled for today"
-                  >
-                    <Clock className="w-4 h-4 mr-2" />
-                    Match today — join blocked
                   </Button>
                 ) : (
                   <Button

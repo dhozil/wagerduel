@@ -83,6 +83,42 @@ def test_join_bet_draw_side_with_past_date_reverts(direct_vm, direct_deploy, dir
         contract.join_bet(f"{GAME_DATE}_denmark_england", "1")
 
 
+def test_join_bet_same_day_still_works(direct_vm, direct_deploy, direct_alice, direct_bob):
+    """Joining a bet on the same calendar day as the match should succeed.
+
+    The contract uses date-only comparison with > (not >=), so same-day
+    matches remain joinable until the next calendar day.
+    """
+    contract = direct_deploy("contracts/p2p_gambling.py")
+    fund(direct_vm, contract, direct_alice, AMOUNT * 5)
+    fund(direct_vm, contract, direct_bob, AMOUNT * 5)
+    direct_vm.sender = direct_alice
+    contract.create_bet(GAME_DATE, "TeamA", "TeamB", "1", RESOLUTION_URL, AMOUNT)
+
+    # Warp to the same day as the match (but earlier time).
+    warp_datetime(direct_vm, f"{GAME_DATE}T14:00:00Z")
+    direct_vm.sender = direct_bob
+    contract.join_bet(f"{GAME_DATE}_teama_teamb", "2")
+
+    bet = contract.get_bet(f"{GAME_DATE}_teama_teamb")
+    assert bet["status"] == "JOINED"
+
+
+def test_join_bet_next_day_reverts(direct_vm, direct_deploy, direct_alice, direct_bob):
+    """Joining a bet the day after the match date must revert."""
+    contract = direct_deploy("contracts/p2p_gambling.py")
+    fund(direct_vm, contract, direct_alice, AMOUNT * 5)
+    fund(direct_vm, contract, direct_bob, AMOUNT * 5)
+    direct_vm.sender = direct_alice
+    contract.create_bet(GAME_DATE, "TeamA", "TeamB", "1", RESOLUTION_URL, AMOUNT)
+
+    # Warp to the day after the match date.
+    warp_datetime(direct_vm, "2050-06-21T00:00:01Z")
+    direct_vm.sender = direct_bob
+    with direct_vm.expect_revert("Cannot join bet: match has already started or completed"):
+        contract.join_bet(f"{GAME_DATE}_teama_teamb", "2")
+
+
 def test_join_bet_draw_side_future_date_works(direct_vm, direct_deploy, direct_alice, direct_bob):
     """Draw-side bets with a future game_date still work."""
     contract = direct_deploy("contracts/p2p_gambling.py")

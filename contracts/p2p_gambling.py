@@ -335,7 +335,8 @@ any other words or characters, no markdown code fences, no commentary.
         if current_date >= match_date + timedelta(days=SETTLEMENT_WINDOW_DAYS):
             raise gl.vm.UserError("Cannot join bet: settlement window has passed; use refund")
         # 2. Match date passed (started or completed)
-        if current_date >= match_date:
+        #    Use > so same-day matches remain joinable until the next calendar day.
+        if current_date > match_date:
             raise gl.vm.UserError("Cannot join bet: match has already started or completed")
         # --------------------------------
 
