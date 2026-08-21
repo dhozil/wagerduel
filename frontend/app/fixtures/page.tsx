@@ -315,7 +315,7 @@ function FixtureCard({
       </div>
 
       {/* Action */}
-      <div className="mt-4 pt-4 border-t border-white/10">
+      <div className="mt-auto pt-4 border-t border-white/10">
         <Button
           onClick={onCreate}
           variant="gradient"
