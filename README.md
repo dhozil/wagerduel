@@ -317,6 +317,12 @@ On-chain verification (all finalizing, ~40s/tx on studionet):
   `refund_expired` (deterministic, no sim config), and a **real AI resolve** of
   Spain 1-0 Italy (2024-06-20) paying the winner minus the 2% fee, then owner
   `withdraw_fees`.
+- **Steward-request security** — `python deploy/test_steward_security.py <address>`
+  proves the steward requirements live on studionet: a **false future kickoff**
+  and a **forged kickoff that doesn't match the fixture** are both rejected and
+  never stored, while a real fixture + correct kickoff is accepted.
+- **Results** — `deploy/RESULTS_studionet.md` documents the recorded studionet
+  execution output (34 checks, 0 failures) for submission evidence.
 
 ## Roadmap
 

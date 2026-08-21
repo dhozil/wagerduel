@@ -1,12 +1,12 @@
 """Live studionet security + method test against the deployed contract.
 
-Covers every public method and the staff security requirement:
+Covers every public method and the steward request security requirement:
   - a false future kickoff cannot be used to keep a duel joinable
   - a forged kickoff that doesn't match the fixture is rejected
   - binding kickoff to the match date
 
 Usage:
-    python deploy/test_staff_security.py <contract_address>
+    python deploy/test_steward_security.py <contract_address>
 """
 
 import os
@@ -162,8 +162,8 @@ def main():
                         "https://example.com/fixtures", GEN, 0, KICKOFF_UTC])
     check("untrusted resolution host (reverts)", rev)
 
-    # ---- STAFF SECURITY: false future kickoff ----
-    print("\n[staff security: false future kickoff]")
+    # ---- STEWARD REQUEST: false future kickoff ----
+    print("\n[steward request: false future kickoff]")
     # kickoff 74 years in the future -> must be rejected at create time
     rev, _ = try_write(alice, "create_bet",
                        [GAME_DATE, TEAM1, TEAM2, "1", RESOLUTION_URL, GEN, 0,
@@ -176,8 +176,8 @@ def main():
                         "2026-08-25T14:00:00Z"])
     check("kickoff far from match date (reverts)", rev)
 
-    # ---- STAFF SECURITY: forged kickoff vs fixture (LLM validator) ----
-    print("\n[staff security: forged kickoff vs fixture (LLM)]")
+    # ---- STEWARD REQUEST: forged kickoff vs fixture (LLM validator) ----
+    print("\n[steward request: forged kickoff vs fixture (LLM)]")
     # Real fixture (Everton vs Crystal Palace 2026-08-22), but a WRONG kickoff
     # (02:00 UTC instead of 14:00 UTC) -> LLM must reject as not matching.
     bet_id_forged = f"{GAME_DATE}_{TEAM1}_{TEAM2}".lower()
