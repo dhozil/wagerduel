@@ -93,8 +93,17 @@ export function BetsGrid() {
       return;
     }
     if (bet.status !== "OPEN") return;
-    if (matchGate(bet) === "finished") {
+    const gate = matchGate(bet);
+    if (gate === "finished") {
       error("This match has already finished — bet can no longer be joined");
+      return;
+    }
+    if (gate === "live") {
+      error("This match is in progress — bet can no longer be joined");
+      return;
+    }
+    if (gate === "unknown") {
+      error("This match is scheduled for today — bet can no longer be joined");
       return;
     }
 
@@ -424,7 +433,6 @@ function BetCard({
       );
     } else if (isConnected && currentAddress && !isWalletLoading && !isOwner) {
       if (gate === "finished") {
-        // The match is already over — joining now would bet on a known result.
         action = (
           <Button
             disabled
@@ -434,6 +442,30 @@ function BetCard({
           >
             <Lock className="w-4 h-4 mr-2" />
             Match already finished
+          </Button>
+        );
+      } else if (gate === "live") {
+        action = (
+          <Button
+            disabled
+            variant="outline"
+            className="w-full text-muted-foreground"
+            title="Match is in progress"
+          >
+            <Lock className="w-4 h-4 mr-2" />
+            Match in progress
+          </Button>
+        );
+      } else if (gate === "unknown") {
+        action = (
+          <Button
+            disabled
+            variant="outline"
+            className="w-full text-muted-foreground"
+            title="Match is scheduled for today"
+          >
+            <Lock className="w-4 h-4 mr-2" />
+            Match today — join blocked
           </Button>
         );
       } else {
