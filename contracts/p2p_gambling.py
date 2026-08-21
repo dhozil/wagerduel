@@ -1,7 +1,7 @@
 # { "Depends": "py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6" }
 
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from genlayer import *
 
 
@@ -86,6 +86,7 @@ class Bet:
     creator: Address
     opponent: Address
     game_date: str
+    kickoff_utc: str
     resolution_url: str
     team1: str
     team2: str
@@ -238,6 +239,7 @@ any other words or characters, no markdown code fences, no commentary.
         resolution_url: str,
         amount: u256,
         handicap_halves: i256 = 0,
+        kickoff_utc: str = "",
     ) -> None:
         if side not in (SIDE_TEAM1, SIDE_TEAM2, SIDE_DRAW):
             raise gl.vm.UserError("Side must be '1', '2', or '0'")
@@ -279,6 +281,17 @@ any other words or characters, no markdown code fences, no commentary.
         if parsed_date < current_date:
             raise gl.vm.UserError("Game date must not be in the past")
 
+        # Validate kickoff_utc (ISO 8601 UTC, e.g. "2026-08-23T19:30:00Z")
+        if kickoff_utc:
+            try:
+                kickoff_dt = datetime.fromisoformat(kickoff_utc.replace("Z", "+00:00"))
+            except (ValueError, TypeError):
+                raise gl.vm.UserError(
+                    "Kickoff time must be a valid ISO 8601 UTC timestamp"
+                )
+        else:
+            kickoff_dt = None
+
         sender = gl.message.sender_address
         if sender == self.owner:
             raise gl.vm.UserError("Owner cannot place bets")
@@ -303,6 +316,7 @@ any other words or characters, no markdown code fences, no commentary.
             creator=sender,
             opponent=Address(bytes(20)),
             game_date=game_date,
+            kickoff_utc=kickoff_utc,
             resolution_url=resolution_url,
             team1=team1,
             team2=team2,
@@ -334,10 +348,23 @@ any other words or characters, no markdown code fences, no commentary.
             raise gl.vm.UserError("Unable to determine match timing")
         if current_date >= match_date + timedelta(days=SETTLEMENT_WINDOW_DAYS):
             raise gl.vm.UserError("Cannot join bet: settlement window has passed; use refund")
-        # 2. Match date passed (started or completed)
-        #    Use > so same-day matches remain joinable until the next calendar day.
-        if current_date > match_date:
-            raise gl.vm.UserError("Cannot join bet: match has already started or completed")
+        # 2. Match kickoff passed (use precise datetime if available, else date-only)
+        if bet.kickoff_utc:
+            try:
+                now_str = gl.message_raw["datetime"]
+                now_utc = datetime.fromisoformat(now_str.replace("Z", "+00:00"))
+                kickoff_dt = datetime.fromisoformat(bet.kickoff_utc.replace("Z", "+00:00"))
+                if now_utc >= kickoff_dt:
+                    raise gl.vm.UserError("Cannot join bet: match has already started")
+            except gl.vm.UserError:
+                raise
+            except Exception:
+                # Fallback to date-only comparison if kickoff_utc is malformed
+                if current_date >= match_date:
+                    raise gl.vm.UserError("Cannot join bet: match has already started or completed")
+        else:
+            if current_date >= match_date:
+                raise gl.vm.UserError("Cannot join bet: match has already started or completed")
         # --------------------------------
 
         if bet.status != STATUS_OPEN:
@@ -571,6 +598,7 @@ any other words or characters, no markdown code fences, no commentary.
             "creator": bet.creator.as_hex,
             "opponent": bet.opponent.as_hex,
             "game_date": bet.game_date,
+            "kickoff_utc": bet.kickoff_utc,
             "resolution_url": bet.resolution_url,
             "team1": bet.team1,
             "team2": bet.team2,

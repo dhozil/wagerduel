@@ -329,12 +329,13 @@ class P2PGambling {
     resolutionUrl: string,
     amountWei: bigint,
     handicapHalves: number,
-    feePreset?: FeePresetEstimate
+    feePreset?: FeePresetEstimate,
+    kickoffUtc?: string
   ): Promise<TransactionReceipt> {
     try {
       return await this.write(
         "create_bet",
-        [gameDate, team1, team2, side, resolutionUrl, amountWei, handicapHalves],
+        [gameDate, team1, team2, side, resolutionUrl, amountWei, handicapHalves, kickoffUtc ?? ""],
         BigInt(0),
         feePreset
       );

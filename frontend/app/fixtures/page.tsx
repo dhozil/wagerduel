@@ -221,6 +221,7 @@ export default function FixturesPage() {
                 team1: selectedFixture.team1,
                 team2: selectedFixture.team2,
                 resolutionUrl: selectedFixture.resolutionUrl,
+                kickoffUtc: selectedFixture.kickoff,
               }
             : null
         }

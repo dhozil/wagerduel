@@ -287,6 +287,7 @@ export function useCreateBet() {
       amountWei,
       handicapHalves,
       feePresetLevel,
+      kickoffUtc,
     }: {
       gameDate: string;
       team1: string;
@@ -296,6 +297,7 @@ export function useCreateBet() {
       amountWei: bigint;
       handicapHalves?: number;
       feePresetLevel?: FeePresetLevel;
+      kickoffUtc?: string;
     }) => {
       if (!contract) {
         throw new Error(
@@ -327,7 +329,8 @@ export function useCreateBet() {
         resolutionUrl,
         amountWei,
         handicapHalves ?? 0,
-        feePreset
+        feePreset,
+        kickoffUtc
       );
     },
     onSuccess: () => {

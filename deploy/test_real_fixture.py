@@ -10,7 +10,7 @@ from genlayer_py.types import TransactionStatus
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 load_dotenv(os.path.join(ROOT, ".env"))
 
-ADDRESS = "0x60c887B1D0A9f7D703193158d57B2C5F1baf2ae8"
+ADDRESS = "0x4fbD8d7f0ff5253dDDD10a0aa280780431F84b9e"
 GEN = 10**18
 
 

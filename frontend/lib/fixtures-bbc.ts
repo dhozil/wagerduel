@@ -95,6 +95,35 @@ export function mergeFixtures(espn: Fixture[], bbc: Fixture[]): Fixture[] {
   return unique.sort((a, b) => a.kickoff.localeCompare(b.kickoff));
 }
 
+/**
+ * Determine if a given UTC date falls within British Summer Time (BST).
+ *
+ * BST runs from the last Sunday in March at 01:00 UTC
+ * to the last Sunday in October at 02:00 UTC.
+ *
+ * @param year  Full year (e.g. 2026)
+ * @param month 1-12
+ * @param day   1-31
+ */
+function isBST(year: number, month: number, day: number): boolean {
+  if (month < 3 || month > 10) return false;
+  if (month > 3 && month < 10) return true;
+
+  // Last Sunday in March
+  const mar31 = new Date(Date.UTC(year, 2, 31));
+  const marSun = mar31.getUTCDay();
+  const bstStart = 31 - (marSun === 0 ? 6 : marSun - 1); // last Sun in Mar
+
+  // Last Sunday in October
+  const oct31 = new Date(Date.UTC(year, 9, 31));
+  const octSun = oct31.getUTCDay();
+  const bstEnd = 31 - (octSun === 0 ? 6 : octSun - 1); // last Sun in Oct
+
+  if (month === 3) return day >= bstStart;
+  if (month === 10) return day < bstEnd;
+  return true;
+}
+
 function h2Title(inner: string): string {
   const text = inner
     .replace(/<svg[\s\S]*?<\/svg>/g, "")
@@ -207,7 +236,9 @@ function parseMatchLi(inner: string, comp: string, date: string): Fixture | null
   let kickoff = "";
   if (kickoffMinutes) {
     const [hh, min] = kickoffMinutes.split(":").map(Number);
-    kickoffDate.setUTCHours(hh - 1, min, 0, 0);
+    const [y, m, d] = date.split("-").map(Number);
+    const offset = isBST(y, m, d) ? 1 : 0; // BST=UTC+1, GMT=UTC+0
+    kickoffDate.setUTCHours(hh - offset, min, 0, 0);
     kickoff = kickoffDate.toISOString();
   }
 

@@ -102,6 +102,10 @@ export function BetsGrid() {
       error("This match is in progress — bet can no longer be joined");
       return;
     }
+    if (gate === "unknown") {
+      error("This match is scheduled for today — bet can no longer be joined");
+      return;
+    }
 
     // No browser confirm here: joining is a wallet transaction and the join
     // hook surfaces its own success/error toasts + the wallet's own popup.
@@ -450,6 +454,18 @@ function BetCard({
           >
             <Lock className="w-4 h-4 mr-2" />
             Match in progress
+          </Button>
+        );
+      } else if (gate === "unknown") {
+        action = (
+          <Button
+            disabled
+            variant="outline"
+            className="w-full text-muted-foreground"
+            title="Match is scheduled for today"
+          >
+            <Lock className="w-4 h-4 mr-2" />
+            Match today — join blocked
           </Button>
         );
       } else {

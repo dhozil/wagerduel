@@ -11,6 +11,7 @@ export interface Bet {
   creator: string;
   opponent: string;
   game_date: string;
+  kickoff_utc?: string;
   resolution_url?: string;
   team1: string;
   team2: string;

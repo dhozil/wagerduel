@@ -36,6 +36,7 @@ interface CreateBetModalProps {
     team1?: string;
     team2?: string;
     resolutionUrl?: string;
+    kickoffUtc?: string;
   } | null;
 }
 
@@ -63,6 +64,7 @@ export function CreateBetModal({
   const [amount, setAmount] = useState("1");
   const [resolutionUrl, setResolutionUrl] = useState("");
   const [feePresetLevel, setFeePresetLevel] = useState<FeePresetLevel>("standard");
+  const [kickoffUtc, setKickoffUtc] = useState("");
 
   const [errors, setErrors] = useState({
     gameDate: "",
@@ -190,6 +192,7 @@ export function CreateBetModal({
       amountWei,
       handicapHalves,
       feePresetLevel,
+      kickoffUtc,
     });
   };
 
@@ -201,6 +204,7 @@ export function CreateBetModal({
     setHandicapGoals(0);
     setAmount("1");
     setResolutionUrl("");
+    setKickoffUtc("");
     setErrors({ gameDate: "", team1: "", team2: "", side: "", amount: "", resolutionUrl: "" });
   };
 
@@ -230,6 +234,7 @@ export function CreateBetModal({
       setTeam2(initialValues.team2 ?? "");
       setSide("");
       setHandicapGoals(0);
+      setKickoffUtc(initialValues.kickoffUtc ?? "");
       setResolutionUrl(
         initialValues.resolutionUrl ?? (date ? defaultUrlFor(date) : "")
       );
