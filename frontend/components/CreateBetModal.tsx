@@ -30,6 +30,7 @@ function defaultUrlFor(date: string): string {
 interface CreateBetModalProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  locked?: boolean;
   initialValues?: {
     gameDate?: string;
     team1?: string;
@@ -41,6 +42,7 @@ interface CreateBetModalProps {
 export function CreateBetModal({
   open,
   onOpenChange,
+  locked = false,
   initialValues,
 }: CreateBetModalProps) {
   const { isConnected, address, isLoading } = useWallet();
@@ -269,7 +271,9 @@ export function CreateBetModal({
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold">Create Head-to-Head Bet</DialogTitle>
           <DialogDescription>
-            Lock your stake and challenge another player to match it.
+            {locked
+              ? "Fixture locked — team names and date are set from the scheduled match."
+              : "Lock your stake and challenge another player to match it."}
           </DialogDescription>
         </DialogHeader>
 
@@ -294,17 +298,23 @@ export function CreateBetModal({
                 <Label htmlFor="gameDate" className="flex items-center gap-2">
                   <Calendar className="w-4 h-4 !text-white" />
                   Game Date
+                  {locked && (
+                    <span className="text-[10px] text-gold font-normal uppercase tracking-wider">
+                      · locked from fixture
+                    </span>
+                  )}
                 </Label>
                 <Input
                   id="gameDate"
                   type="date"
                   value={gameDate}
+                  readOnly={locked}
                   onChange={(e) => {
                     setGameDate(e.target.value);
                     setResolutionUrl((prev) => prev || defaultUrlFor(e.target.value));
                     setErrors({ ...errors, gameDate: "" });
                   }}
-                  className={errors.gameDate ? "border-destructive" : ""}
+                  className={`${errors.gameDate ? "border-destructive" : ""} ${locked ? "opacity-70 cursor-not-allowed" : ""}`}
                 />
                 {errors.gameDate && (
                   <p className="text-xs text-destructive">{errors.gameDate}</p>
@@ -316,6 +326,11 @@ export function CreateBetModal({
                 <Label className="flex items-center gap-2">
                   <Users className="w-4 h-4" />
                   Teams
+                  {locked && (
+                    <span className="text-[10px] text-gold font-normal uppercase tracking-wider">
+                      · locked from fixture
+                    </span>
+                  )}
                 </Label>
                 <div className="grid grid-cols-1 gap-3">
                   <div className="space-y-2">
@@ -324,11 +339,12 @@ export function CreateBetModal({
                       type="text"
                       placeholder="Team 1"
                       value={team1}
+                      readOnly={locked}
                       onChange={(e) => {
                         setTeam1(e.target.value);
                         setErrors({ ...errors, team1: "" });
                       }}
-                      className={errors.team1 ? "border-destructive" : ""}
+                      className={`${errors.team1 ? "border-destructive" : ""} ${locked ? "opacity-70 cursor-not-allowed" : ""}`}
                     />
                     {errors.team1 && (
                       <p className="text-xs text-destructive">{errors.team1}</p>
@@ -340,11 +356,12 @@ export function CreateBetModal({
                       type="text"
                       placeholder="Team 2"
                       value={team2}
+                      readOnly={locked}
                       onChange={(e) => {
                         setTeam2(e.target.value);
                         setErrors({ ...errors, team2: "" });
                       }}
-                      className={errors.team2 ? "border-destructive" : ""}
+                      className={`${errors.team2 ? "border-destructive" : ""} ${locked ? "opacity-70 cursor-not-allowed" : ""}`}
                     />
                     {errors.team2 && (
                       <p className="text-xs text-destructive">{errors.team2}</p>

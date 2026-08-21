@@ -1,25 +1,21 @@
 """Tests for the deterministic expiry refund - the bounded escape hatch.
 
-NOTE: Some JOINED-bet refund scenarios require the settlement window to have
-elapsed, which means the game_date must be in the past.  However join_bet now
-rejects past game_dates (the cutoff enforcement).  These scenarios can only be
-tested on studionet where block timing is real.  The tests below cover the
-OPEN-bet refund path and the pre-deadline revert, which are fully testable in
-direct mode.
+create_bet now rejects past game_dates, so we use a FUTURE game_date and
+vm.warp() to fast-forward time past the settlement deadline (game_date + 14 days).
+This lets us test the expiry refund path fully in direct mode.
 """
 
-import json
-
-from tests.direct.conftest import RESOLUTION_URL, fund, to_hex
+from tests.direct.conftest import RESOLUTION_URL, fund, to_hex, warp_datetime
 
 AMOUNT = 1000
-# Past game_date — the system datetime (2026) is already past the deadline.
-GAME_DATE = "2024-06-20"
-BET_ID = "2024-06-20_spain_italy"
+GAME_DATE = "2050-06-20"
+BET_ID = "2050-06-20_spain_italy"
+# Warp target: past the deadline (2050-06-20 + 14d = 2050-07-04)
+WARP_DEADLINE = "2050-07-05T12:00:00Z"
 
 
 def _create_open(vm, contract, alice):
-    """Create an OPEN bet (no join) with the past game_date."""
+    """Create an OPEN bet (no join) with a future game_date."""
     fund(vm, contract, alice, AMOUNT * 5)
     vm.sender = alice
     contract.create_bet(GAME_DATE, "Spain", "Italy", "1", RESOLUTION_URL, AMOUNT)
@@ -42,7 +38,10 @@ def test_refund_expired_open_after_deadline_refunds_creator(
     _create_open(direct_vm, contract, direct_alice)
     fund(direct_vm, contract, direct_bob, AMOUNT * 5)
 
-    # System datetime (2026) is past the deadline for 2024-06-20 + 14 days.
+    # Warp past the settlement deadline so _deadline_passed returns True.
+    warp_datetime(direct_vm, WARP_DEADLINE)
+    # Refresh gl.message_raw after warp
+    direct_vm.sender = direct_alice
     contract.refund_expired(BET_ID)
 
     bet = contract.get_bet(BET_ID)
@@ -62,6 +61,8 @@ def test_refund_expired_cannot_run_twice(
     _create_open(direct_vm, contract, direct_alice)
     fund(direct_vm, contract, direct_bob, AMOUNT * 5)
 
+    warp_datetime(direct_vm, WARP_DEADLINE)
+    direct_vm.sender = direct_alice
     contract.refund_expired(BET_ID)
 
     with direct_vm.expect_revert("Bet must be open or joined by two players"):
@@ -76,6 +77,7 @@ def test_refund_expired_can_be_called_by_anyone(
     _create_open(direct_vm, contract, direct_alice)
     fund(direct_vm, contract, direct_bob, AMOUNT * 5)
 
+    warp_datetime(direct_vm, WARP_DEADLINE)
     direct_vm.sender = direct_charlie
     contract.refund_expired(BET_ID)
 

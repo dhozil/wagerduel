@@ -121,6 +121,48 @@ class P2PGambling(gl.Contract):
     def __init__(self):
         self.owner = gl.message.sender_address
 
+    def _verify_fixtures(
+        self, game_date: str, team1: str, team2: str, resolution_url: str
+    ) -> bool:
+        """Verify that team1 vs team2 appears in the real fixtures for game_date.
+
+        Fetches the resolution URL page and uses an LLM to extract the fixtures.
+        Returns True only if both team names match a real fixture on that date.
+        This prevents spam bets with fabricated team names.
+        """
+
+        def leader_fn():
+            web_data = gl.nondet.web.render(resolution_url, mode="text")
+
+            prompt = f"""You are a football fixture verifier. Below is a fixtures/scores
+page for the date {game_date}.
+
+Web content:
+{web_data}
+
+Check if a match between "{team1}" and "{team2}" exists on this page.
+The team names may appear in different casings or with slight formatting
+differences (e.g. "Man City" vs "Manchester City"). Be lenient — accept
+reasonable abbreviations and common short forms.
+
+Respond in JSON with exactly these keys:
+{{
+    "valid": true|false
+}}
+It is mandatory that you respond only using the JSON format above. Do not
+include any other words or characters, no markdown code fences, no commentary.
+"""
+            result = gl.nondet.exec_prompt(prompt, response_format="json")
+            return bool(result.get("valid", False))
+
+        def validator_fn(leader_result) -> bool:
+            if not isinstance(leader_result, gl.vm.Return):
+                return False
+            my_result = leader_fn()
+            return leader_result.calldata == my_result
+
+        return gl.vm.run_nondet_unsafe(leader_fn, validator_fn)
+
     def _fetch_match_result(self, resolution_url: str, team1: str, team2: str) -> dict:
         def leader_fn():
             web_data = gl.nondet.web.render(resolution_url, mode="text")
@@ -221,11 +263,33 @@ any other words or characters, no markdown code fences, no commentary.
         if _trusted_host_of(resolution_url) not in TRUSTED_SOURCE_HOSTS:
             raise gl.vm.UserError("Resolution URL must use a trusted source")
 
+        # Validate game_date format (YYYY-MM-DD)
+        try:
+            parsed_date = date.fromisoformat(game_date)
+        except (ValueError, TypeError):
+            raise gl.vm.UserError(
+                "Game date must be in YYYY-MM-DD format"
+            )
+
+        # Reject bets with past game dates (prevents spam with old/fake dates)
+        try:
+            current_date = date.fromisoformat(gl.message_raw["datetime"][:10])
+        except (ValueError, TypeError, KeyError):
+            raise gl.vm.UserError("Unable to determine current date")
+        if parsed_date < current_date:
+            raise gl.vm.UserError("Game date must not be in the past")
+
         sender = gl.message.sender_address
         if sender == self.owner:
             raise gl.vm.UserError("Owner cannot place bets")
         if self.balances.get(sender, 0) < amount:
             raise gl.vm.UserError("Insufficient balance")
+
+        # Verify teams exist in real fixtures for this date
+        if not self._verify_fixtures(game_date, team1, team2, resolution_url):
+            raise gl.vm.UserError(
+                "Teams not found in fixtures for this date"
+            )
 
         bet_id = f"{game_date}_{team1}_{team2}".lower()
         if bet_id in self.bets and self.bets[bet_id].status in (

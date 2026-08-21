@@ -21,13 +21,9 @@ export function MarketStats() {
 
   if (isLoading) {
     return (
-      <div className="brand-card p-6">
-        <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-          <Wallet className="w-5 h-5 text-accent" />
-          Arena Overview
-        </h2>
-        <div className="flex items-center justify-center py-8">
-          <Loader2 className="w-6 h-6 animate-spin text-accent" />
+      <div className="brand-card p-4">
+        <div className="flex items-center justify-center py-4">
+          <Loader2 className="w-5 h-5 animate-spin text-accent" />
         </div>
       </div>
     );
@@ -35,17 +31,10 @@ export function MarketStats() {
 
   if (!contract) {
     return (
-      <div className="brand-card p-6">
-        <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-          <Wallet className="w-5 h-5 text-accent" />
-          Arena Overview
-        </h2>
-        <div className="text-center py-8 space-y-3">
-          <AlertCircle className="w-12 h-12 mx-auto text-yellow-400 opacity-60" />
-          <div className="space-y-1">
-            <p className="text-sm text-muted-foreground">Setup Required</p>
-            <p className="text-xs text-muted-foreground">Contract address not configured</p>
-          </div>
+      <div className="brand-card p-4">
+        <div className="flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 text-yellow-400" />
+          <span className="text-xs text-muted-foreground">Contract not configured</span>
         </div>
       </div>
     );
@@ -57,19 +46,19 @@ export function MarketStats() {
 
   const stats = [
     {
-      label: "Total Escrow",
+      label: "Escrow",
       value: formatWei(escrow || 0),
       icon: Wallet,
       color: "text-accent",
     },
     {
-      label: "Open Bets",
+      label: "Open",
       value: String(openBets),
       icon: Hourglass,
       color: "text-yellow-400",
     },
     {
-      label: "Active (2 Players)",
+      label: "Active",
       value: String(joinedBets),
       icon: Trophy,
       color: "text-green-400",
@@ -83,37 +72,26 @@ export function MarketStats() {
   ];
 
   return (
-    <div className="brand-card p-6">
-      <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-        <Wallet className="w-5 h-5 text-accent" />
-        Arena Overview
-      </h2>
-
-      <div className="space-y-3">
+    <div className="brand-card p-4">
+      <div className="grid grid-cols-4 gap-3">
         {stats.map((stat) => (
           <div
             key={stat.label}
-            className="flex items-center justify-between p-3 rounded-lg hover:bg-white/5 transition-colors"
+            className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-white/5 transition-colors"
           >
-            <div className="flex items-center gap-3">
-              <stat.icon className={`w-4 h-4 ${stat.color}`} />
-              <span className="text-sm text-muted-foreground">{stat.label}</span>
-            </div>
+            <stat.icon className={`w-4 h-4 ${stat.color}`} />
             <span className="text-sm font-bold">{stat.value}</span>
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{stat.label}</span>
           </div>
         ))}
       </div>
 
-      <p className="mt-4 text-xs text-muted-foreground border-t border-white/10 pt-3">
-        Stakes are held by the contract and paid to the winner automatically after the match is resolved by AI-verified real-world data. A flat 2% platform fee is taken from each settled pot and held for the owner.
-      </p>
-
       {isOwner && (
-        <div className="mt-4 pt-3 border-t border-white/10">
-          <div className="flex items-center justify-between mb-2 text-xs">
+        <div className="mt-3 pt-3 border-t border-white/10">
+          <div className="flex items-center justify-between mb-1.5 text-xs">
             <span className="text-muted-foreground flex items-center gap-1">
-              <Coins className="w-3.5 h-3.5 text-gold" />
-              Owner fee balance
+              <Coins className="w-3 h-3 text-gold" />
+              Fee balance
             </span>
             <span className="font-bold text-gold">{formatWei(ownerFees)}</span>
           </div>
@@ -134,13 +112,13 @@ export function MarketStats() {
           >
             {isWithdrawing ? (
               <>
-                <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
                 Withdrawing...
               </>
             ) : (
               <>
-                <Coins className="w-3.5 h-3.5 mr-1.5" />
-                {confirmOpen ? "Confirm withdrawal?" : "Withdraw fees"}
+                <Coins className="w-3 h-3 mr-1.5" />
+                {confirmOpen ? "Confirm?" : "Withdraw fees"}
               </>
             )}
           </Button>

@@ -2,7 +2,7 @@
 
 import json
 
-from tests.direct.conftest import RESOLUTION_URL, fund, to_hex
+from tests.direct.conftest import FIXTURES_MOCK_HTML, RESOLUTION_URL, fund, to_hex
 
 AMOUNT = 1000
 GAME_DATE = "2050-06-20"
@@ -155,6 +155,16 @@ def test_fee_invariant_over_two_duels(
     def _resolve(bet_id, team1, team2, winner):
         direct_vm.sender = direct_alice
         direct_vm.clear_mocks()
+        # Re-register fixture mocks for create_bet
+        direct_vm.mock_web(r".*bbc\.com.*scores-fixtures.*", {
+            "status": 200,
+            "body": FIXTURES_MOCK_HTML,
+        })
+        direct_vm.mock_llm(
+            r".*football fixture verifier.*",
+            '{"valid": true}',
+        )
+        # Resolution mocks
         direct_vm.mock_web(
             r".*bbc\.com/sport/football/scores-fixtures.*",
             {"status": 200, "body": "Match result: 1:0. Winner: team 1."},

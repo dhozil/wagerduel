@@ -59,7 +59,7 @@ export function BetsGrid() {
   const { cancelBet, isCanceling, cancelingBetId } = useCancelBet();
   const { refundExpired, isRefunding, refundingBetId } = useRefundExpired();
   const { data: owner } = useOwner();
-  const [filter, setFilter] = useState<"all" | "mine">("all");
+  const [filter, setFilter] = useState<"all" | "mine" | "active">("all");
   const { byDate, loading: gatesLoading } = useMatchGates(bets);
   const isOwner =
     !!address && !!owner && address.toLowerCase() === owner.toLowerCase();
@@ -177,12 +177,17 @@ export function BetsGrid() {
   }
 
   const visibleBets = (bets || []).filter((b) => {
-    if (filter !== "mine") return true;
-    if (!address) return false;
-    return (
-      b.creator?.toLowerCase() === address.toLowerCase() ||
-      (b.opponent && b.opponent.toLowerCase() === address.toLowerCase())
-    );
+    if (filter === "mine") {
+      if (!address) return false;
+      return (
+        b.creator?.toLowerCase() === address.toLowerCase() ||
+        (b.opponent && b.opponent.toLowerCase() === address.toLowerCase())
+      );
+    }
+    if (filter === "active") {
+      return b.status === "OPEN" || b.status === "JOINED";
+    }
+    return true;
   });
 
   return (
@@ -190,7 +195,7 @@ export function BetsGrid() {
       {/* Filter tabs */}
       <div className="flex items-center justify-between px-1">
         <div className="inline-flex rounded-lg border border-gold/20 bg-gold/5 p-0.5">
-          {(["all", "mine"] as const).map((f) => (
+          {(["all", "active", "mine"] as const).map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
@@ -200,7 +205,7 @@ export function BetsGrid() {
                   : "text-muted-foreground hover:text-gold"
               }`}
             >
-              {f === "all" ? "All Bets" : "My Bets"}
+              {f === "all" ? "All Bets" : f === "active" ? "Active" : "My Bets"}
             </button>
           ))}
         </div>
@@ -226,7 +231,9 @@ export function BetsGrid() {
               <p className="text-muted-foreground">
                 {filter === "mine"
                   ? "You are not a participant in any bet yet. Create one or join an open challenge."
-                  : "Be the first to create a head-to-head football bet!"}
+                  : filter === "active"
+                    ? "No active bets right now. Create one or join an open challenge."
+                    : "Be the first to create a head-to-head football bet!"}
               </p>
             </>
           )}

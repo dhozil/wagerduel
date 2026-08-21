@@ -2,7 +2,7 @@
 
 import pytest
 
-from tests.direct.conftest import RESOLUTION_URL, fund
+from tests.direct.conftest import FIXTURES_MOCK_HTML, RESOLUTION_URL, fund
 
 AMOUNT = 1000
 
@@ -211,3 +211,46 @@ def test_owner_cannot_create_bet(direct_vm, direct_deploy, direct_owner):
 
     with direct_vm.expect_revert("Owner cannot place bets"):
         contract.create_bet("2050-06-20", "Spain", "Italy", "1", RESOLUTION_URL, AMOUNT)
+
+
+def test_create_bet_fake_teams_reverts(direct_vm, direct_deploy, direct_alice):
+    """Bets with team names not found in fixtures are rejected."""
+    contract = direct_deploy("contracts/p2p_gambling.py")
+    _ready(direct_vm, contract, direct_alice)
+    direct_vm.sender = direct_alice
+
+    # Override autouse mocks: clear all, then re-register with valid=false
+    direct_vm.clear_mocks()
+    direct_vm.mock_web(r".*bbc\.com.*scores-fixtures.*", {
+        "status": 200,
+        "body": FIXTURES_MOCK_HTML,
+    })
+    direct_vm.mock_llm(
+        r".*football fixture verifier.*",
+        '{"valid": false}',
+    )
+
+    with direct_vm.expect_revert("Teams not found in fixtures for this date"):
+        contract.create_bet(
+            "2050-06-20", "FakeTeamX", "FakeTeamY", "1", RESOLUTION_URL, AMOUNT
+        )
+
+
+def test_create_bet_past_date_reverts(direct_vm, direct_deploy, direct_alice):
+    """Bets with past game dates are rejected to prevent spam."""
+    contract = direct_deploy("contracts/p2p_gambling.py")
+    _ready(direct_vm, contract, direct_alice)
+    direct_vm.sender = direct_alice
+
+    with direct_vm.expect_revert("Game date must not be in the past"):
+        contract.create_bet("2020-01-01", "Spain", "Italy", "1", RESOLUTION_URL, AMOUNT)
+
+
+def test_create_bet_invalid_date_format_reverts(direct_vm, direct_deploy, direct_alice):
+    """Bets with invalid date format are rejected."""
+    contract = direct_deploy("contracts/p2p_gambling.py")
+    _ready(direct_vm, contract, direct_alice)
+    direct_vm.sender = direct_alice
+
+    with direct_vm.expect_revert("Game date must be in YYYY-MM-DD format"):
+        contract.create_bet("not-a-date", "Spain", "Italy", "1", RESOLUTION_URL, AMOUNT)

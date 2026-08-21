@@ -2,9 +2,8 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Activity, Trophy } from "lucide-react";
+import { Activity, Trophy, Plus } from "lucide-react";
 import { AccountPanel } from "./AccountPanel";
-import { CreateBetModal } from "./CreateBetModal";
 import { useBets } from "@/lib/hooks/useP2PGambling";
 import { GENLAYER_NETWORK } from "@/lib/genlayer/client";
 import { Logo, LogoMark } from "./Logo";
@@ -84,7 +83,13 @@ export function Navbar() {
               </div>
             </div>
             <div className="h-8 w-px bg-gold/15 hidden md:block" />
-            <CreateBetModal />
+            <Link
+              href="/fixtures"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-gold to-gold/80 text-[var(--primary-foreground)] text-sm font-semibold uppercase tracking-wider hover:opacity-90 transition-opacity"
+            >
+              <Plus className="w-4 h-4" />
+              <span className="hidden sm:inline">Create Bet</span>
+            </Link>
             <AccountPanel />
           </div>
         </div>

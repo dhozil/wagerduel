@@ -213,6 +213,7 @@ export default function FixturesPage() {
         onOpenChange={(o) => {
           if (!o) setSelectedFixture(null);
         }}
+        locked={selectedFixture !== null}
         initialValues={
           selectedFixture
             ? {
