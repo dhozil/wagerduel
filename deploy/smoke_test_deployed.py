@@ -21,7 +21,7 @@ from genlayer_py.types import TransactionStatus
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 load_dotenv(os.path.join(ROOT, ".env"))
 
-ADDRESS = "0x587318b4965a4186Eb5c7E815f079FD3033ca284"
+ADDRESS = "0xa397d1bd44C67308D4747851D346f03b4069912C"
 OWNER = "0x28Cf6872815C1F275b4Ae5a291799d11cF5bd0De"
 GEN = 10**18
 RESOLVE = "--resolve" in sys.argv
