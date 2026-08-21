@@ -777,7 +777,7 @@ function BetCard({
 
       {/* Action */}
       {action && (
-        <div className="mt-3.5 pt-3.5 border-t border-white/10">{action}</div>
+        <div className="mt-auto pt-3.5 border-t border-white/10">{action}</div>
       )}
     </div>
   );
