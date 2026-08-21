@@ -742,7 +742,7 @@ function Footer() {
           <p className="text-xs text-muted-foreground">
             Contract:{" "}
             <code className="bg-gold/10 text-gold px-1.5 py-0.5 rounded text-[11px]">
-              0xe883305EF54422df7bbcBFf20A8eF87F79607750
+              0x346AEc8a5e659973D84A011ac6D53292Ace51Ede
             </code>{" "}
             ·{" "}
             <a

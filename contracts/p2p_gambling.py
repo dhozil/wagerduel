@@ -145,7 +145,20 @@ class P2PGambling(gl.Contract):
         """
 
         def leader_fn():
-            web_data = gl.nondet.web.render(resolution_url, mode="text")
+            # The web fetch and the LLM call are both non-deterministic and are
+            # not 100% reliable (occasional empty/bot-blocked pages, or an LLM
+            # that returns malformed/partial JSON). Retry each a few times so a
+            # single transient failure does not fail the whole create_bet.
+            web_data = ""
+            for _ in range(3):
+                try:
+                    web_data = gl.nondet.web.render(resolution_url, mode="text")
+                    if web_data and web_data.strip():
+                        break
+                except Exception:
+                    web_data = ""
+            if not web_data or not web_data.strip():
+                return False if not kickoff_utc else {"valid": False, "valid_kickoff": False}
 
             if kickoff_utc:
                 prompt = f"""You are a football fixture verifier. Below is a fixtures/scores
@@ -166,13 +179,12 @@ show the kickoff in a local/venue timezone — convert it to UTC using your
 understanding of the competition/venue. If the page does not show a kickoff
 time for the match, set valid_kickoff to true (nothing to cross-check).
 
-Respond in JSON with exactly these keys:
+Respond ONLY with a valid JSON object (no markdown, no code fences, no
+commentary) with exactly these keys:
 {{
     "valid": true|false,
     "valid_kickoff": true|false
 }}
-It is mandatory that you respond only using the JSON format above. Do not
-include any other words or characters, no markdown code fences, no commentary.
 """
             else:
                 prompt = f"""You are a football fixture verifier. Below is a fixtures/scores
@@ -186,20 +198,27 @@ The team names may appear in different casings or with slight formatting
 differences (e.g. "Man City" vs "Manchester City"). Be lenient — accept
 reasonable abbreviations and common short forms.
 
-Respond in JSON with exactly these keys:
+Respond ONLY with a valid JSON object (no markdown, no code fences, no
+commentary) with exactly these keys:
 {{
     "valid": true|false
 }}
-It is mandatory that you respond only using the JSON format above. Do not
-include any other words or characters, no markdown code fences, no commentary.
 """
-            result = gl.nondet.exec_prompt(prompt, response_format="json")
-            if kickoff_utc:
-                return {
-                    "valid": bool(result.get("valid", False)),
-                    "valid_kickoff": bool(result.get("valid_kickoff", False)),
-                }
-            return bool(result.get("valid", False))
+            for _ in range(3):
+                try:
+                    result = gl.nondet.exec_prompt(prompt, response_format="json")
+                    if kickoff_utc:
+                        # Missing valid_kickoff means the page had no kickoff to
+                        # cross-check, so treat it as true rather than failing on
+                        # a parse hiccup. An explicit false still rejects.
+                        return {
+                            "valid": bool(result.get("valid", False)),
+                            "valid_kickoff": bool(result.get("valid_kickoff", True)),
+                        }
+                    return bool(result.get("valid", False))
+                except Exception:
+                    continue
+            return False if not kickoff_utc else {"valid": False, "valid_kickoff": False}
 
         def validator_fn(leader_result) -> bool:
             if not isinstance(leader_result, gl.vm.Return):
@@ -216,7 +235,18 @@ include any other words or characters, no markdown code fences, no commentary.
 
     def _fetch_match_result(self, resolution_url: str, team1: str, team2: str) -> dict:
         def leader_fn():
-            web_data = gl.nondet.web.render(resolution_url, mode="text")
+            # Web fetch is non-deterministic and occasionally transiently fails;
+            # retry so a single hiccup does not abort a resolve.
+            web_data = ""
+            for _ in range(3):
+                try:
+                    web_data = gl.nondet.web.render(resolution_url, mode="text")
+                    if web_data and web_data.strip():
+                        break
+                except Exception:
+                    web_data = ""
+            if not web_data or not web_data.strip():
+                return {"score": "-", "winner": -1}
 
             prompt = f"""
 You are a match-result extractor. Determine the final result of a football match.
@@ -230,20 +260,24 @@ Web content:
 Extract the FINAL score and the winner. If the match has not been played yet or
 there is no final result, set winner to -1 and score to "-".
 
-Respond in JSON with exactly these keys:
+Respond ONLY with a valid JSON object (no markdown, no code fences, no
+commentary) with exactly these keys:
 {{
     "score": "X:Y",     // final score, e.g. "2:1", or "-" if no result yet
     "winner": 1|2|0|-1  // 1 if Team 1 won, 2 if Team 2 won, 0 for a draw,
                         // -1 if the match has not finished
 }}
-It is mandatory that you respond only using the JSON format above. Do not include
-any other words or characters, no markdown code fences, no commentary.
 """
-            result = gl.nondet.exec_prompt(prompt, response_format="json")
-            return {
-                "score": str(result.get("score", "-")),
-                "winner": int(result.get("winner", -1)),
-            }
+            for _ in range(3):
+                try:
+                    result = gl.nondet.exec_prompt(prompt, response_format="json")
+                    return {
+                        "score": str(result.get("score", "-")),
+                        "winner": int(result.get("winner", -1)),
+                    }
+                except Exception:
+                    continue
+            return {"score": "-", "winner": -1}
 
         def validator_fn(leader_result) -> bool:
             if not isinstance(leader_result, gl.vm.Return):

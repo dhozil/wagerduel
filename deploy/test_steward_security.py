@@ -21,7 +21,7 @@ from genlayer_py.types import TransactionStatus
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 load_dotenv(os.path.join(ROOT, ".env"))
 
-ADDRESS = sys.argv[1] if len(sys.argv) > 1 else "0xDe5e6Ad70BB596051Ee6DfbB23e8039774603648"
+ADDRESS = sys.argv[1] if len(sys.argv) > 1 else "0x346AEc8a5e659973D84A011ac6D53292Ace51Ede"
 OWNER = "0x28Cf6872815C1F275b4Ae5a291799d11cF5bd0De"
 GEN = 10**18
 
@@ -33,6 +33,10 @@ KICKOFF_UTC = "2026-08-22T14:00:00Z"  # 15:00 UK during BST = 14:00 UTC
 
 PASS = 0
 FAIL = 0
+
+# Recorded evidence: label -> {hash, exec} for the explorer report.
+EVIDENCE = []
+EXPLORER = "https://explorer-studio.genlayer.com/tx/"
 
 
 def check(label: str, ok: bool, detail: str = ""):
@@ -87,10 +91,12 @@ def main():
             retries=timeout_retries,
         )
         status = receipt.get("status_name", receipt.get("status"))
-        print(f"  {name} -> {status} (exec={_exec_result(receipt)}) in {time.time() - t0:.1f}s")
+        result = _exec_result(receipt)
+        print(f"  {name} -> {status} (exec={result}) in {time.time() - t0:.1f}s  tx={tx[:18]}...")
+        EVIDENCE.append({"name": name, "hash": tx, "exec": result})
         return receipt
 
-    def try_write(account, name, args=None, value=0):
+    def try_write(account, name, args=None, value=0, label=""):
         """Returns (reverted, receipt). reverted=True means execution errored.
 
         Rests: studionet FINALIZES the tx even on a UserError revert; the
@@ -98,7 +104,11 @@ def main():
         """
         try:
             rec = write(account, name, args, value)
-            return _exec_result(rec) == "ERROR", rec
+            rev = _exec_result(rec) == "ERROR"
+            if label:
+                EVIDENCE.append({"name": label, "hash": rec.get("hash", ""),
+                                 "exec": "REVERT" if rev else "SUCCESS"})
+            return rev, rec
         except Exception as e:
             print(f"  {name} raised: {type(e).__name__}")
             return True, None
@@ -167,13 +177,15 @@ def main():
     # kickoff 74 years in the future -> must be rejected at create time
     rev, _ = try_write(alice, "create_bet",
                        [GAME_DATE, TEAM1, TEAM2, "1", RESOLUTION_URL, GEN, 0,
-                        "2100-01-01T00:00:00Z"])
+                        "2100-01-01T00:00:00Z"],
+                       label="steward:false_future_kickoff")
     check("false FUTURE kickoff (reverts)", rev)
 
     # kickoff on a different (later) date than the match -> still bound to date
     rev, _ = try_write(alice, "create_bet",
                        [GAME_DATE, TEAM1, TEAM2, "1", RESOLUTION_URL, GEN, 0,
-                        "2026-08-25T14:00:00Z"])
+                        "2026-08-25T14:00:00Z"],
+                       label="steward:kickoff_far_from_date")
     check("kickoff far from match date (reverts)", rev)
 
     # ---- STEWARD REQUEST: forged kickoff vs fixture (LLM validator) ----
@@ -183,7 +195,8 @@ def main():
     bet_id_forged = f"{GAME_DATE}_{TEAM1}_{TEAM2}".lower()
     rev, _ = try_write(alice, "create_bet",
                        [GAME_DATE, TEAM1, TEAM2, "1", RESOLUTION_URL, GEN, 0,
-                        "2026-08-22T02:00:00Z"])
+                        "2026-08-22T02:00:00Z"],
+                       label="steward:forged_kickoff_not_matching_fixture")
     # Confirm nothing was stored for the forged attempt
     try:
         read("get_bet", [bet_id_forged])
@@ -196,7 +209,8 @@ def main():
     print("\n[create real bet with verified kickoff (web+LLM)]")
     rev, _ = try_write(alice, "create_bet",
                        [GAME_DATE, TEAM1, TEAM2, "1", RESOLUTION_URL, GEN, 0,
-                        KICKOFF_UTC])
+                        KICKOFF_UTC],
+                       label="steward:real_kickoff_accepted")
     check("real fixture + correct kickoff (accepted)", not rev)
     bet = None
     if not rev:
@@ -244,6 +258,11 @@ def main():
     print(f"\n=== SUMMARY: {PASS} passed, {FAIL} failed ===")
     if FAIL:
         raise SystemExit(f"{FAIL} studionet checks failed")
+
+    # --- Explorer evidence for the report ---
+    print("\n=== EXPLORER EVIDENCE (tx hashes) ===")
+    for ev in EVIDENCE:
+        print(f"[{ev['name']}] {ev['exec']}  {EXPLORER}{ev['hash']}")
     print("ALL STUDIONET SECURITY CHECKS PASSED")
 
 

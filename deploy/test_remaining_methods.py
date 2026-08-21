@@ -19,7 +19,7 @@ from genlayer_py.types import TransactionStatus
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 load_dotenv(os.path.join(ROOT, ".env"))
 
-ADDRESS = sys.argv[1] if len(sys.argv) > 1 else "0xe883305EF54422df7bbcBFf20A8eF87F79607750"
+ADDRESS = sys.argv[1] if len(sys.argv) > 1 else "0x346AEc8a5e659973D84A011ac6D53292Ace51Ede"
 GEN = 10**18
 
 PASS = 0
