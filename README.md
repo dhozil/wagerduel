@@ -304,7 +304,7 @@ Snap**.
 
 | Network | Address |
 |---|---|
-| GenLayer Studio (chain `61999`) | `0x4fbD8d7f0ff5253dDDD10a0aa280780431F84b9e` |
+| GenLayer Studio (chain `61999`) | `0xe883305EF54422df7bbcBFf20A8eF87F79607750` |
 
 On-chain verification (all finalizing, ~40s/tx on studionet):
 
