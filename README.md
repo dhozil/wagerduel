@@ -35,8 +35,9 @@
   Fake/invented team names are rejected at contract level. Users create bets
   from the Fixtures page where team names and game date are locked (no edits).
 - **Match cutoff enforcement** — `join_bet` enforces two on-chain guards:
-  (1) reject if match date has passed ("match has already started"), (2) reject
-  if settlement window has passed ("use refund"). Late entry is impossible.
+  (1) reject if match kickoff has passed (datetime-level via `kickoff_utc`, or
+  date-only fallback), (2) reject if settlement window has passed ("use refund").
+  Late entry is impossible.
 - **Past date rejection** — `create_bet` rejects game dates in the past,
   preventing spam with old or fabricated dates.
 - **Fair head-to-head rules** — opponents must bet on opposite outcomes
@@ -100,7 +101,7 @@ balance       (escrow: 5 GEN)         (escrow: 10 GEN)       verify winner + sco
    UEFA, Premier League). Optionally set a **handicap (voor)** to level the field
    (see below). Users create bets from the Fixtures page where **team names and game date are locked**.
 3. **Join** — `join_bet(bet_id, side)` locks the matching stake and seals the
-   duel. Opponents must choose the opposite outcome. **On-chain cutoff enforcement**: joins are rejected after the match date or after the settlement window (match + 14 days).
+   duel. Opponents must choose the opposite outcome. **On-chain cutoff enforcement**: joins are rejected after the match kickoff (datetime-level) or after the settlement window (match + 14 days).
 4. **Resolve** — anyone calls `resolve_bet(bet_id)`. The contract re-reads the
    committed URL, the LLM extracts the result, and validators confirm it.
    The frontend **auto-reads the fixture feed** (ESPN + BBC) for the match date
@@ -169,7 +170,7 @@ Contract: `contracts/p2p_gambling.py` — class `P2PGambling`.
 |---|---|---|
 | `deposit()` | write (payable) | Add GEN to your on-chain balance |
 | `withdraw(amount)` | write | Send part of your balance back to your wallet |
-| `create_bet(game_date, team1, team2, side, resolution_url, amount, handicap_halves=0)` | write | Lock your stake and open a duel (validates fixtures via web fetch + LLM) |
+| `create_bet(game_date, team1, team2, side, resolution_url, amount, handicap_halves=0, kickoff_utc="")` | write | Lock your stake and open a duel (validates fixtures via web fetch + LLM; optional `kickoff_utc` enables datetime-level cutoff) |
 | `join_bet(bet_id, side)` | write | Match the stake on the opposite outcome (cutoff enforced) |
 | `cancel_bet(bet_id)` | write | Creator refunds stake while the duel is OPEN |
 | `resolve_bet(bet_id)` | write | AI-verified settlement; pays pot − 2% fee |
@@ -205,7 +206,7 @@ Contract: `contracts/p2p_gambling.py` — class `P2PGambling`.
   category.
 - One-time settlement guards prevent a settled duel from being paid, refunded,
   or canceled again.
-- **Match cutoff enforcement**: `join_bet` rejects after match date or settlement window.
+- **Match cutoff enforcement**: `join_bet` rejects after match kickoff or settlement window.
 - **Past date rejection**: `create_bet` rejects game dates in the past.
 - **Fixture validation**: `create_bet` verifies team names via web fetch + LLM.
 - `withdraw_fees` is owner-only, capped at accumulated fees — active player
