@@ -3,21 +3,26 @@
 Live results from testing the deployed WagerDuel contract on **GenLayer Studionet**.
 
 - **Chain**: studionet (`https://studio.genlayer.com/api`, chain 61999)
-- **Contract**: `0x346AEc8a5e659973D84A011ac6D53292Ace51Ede`
-- **Explorer**: https://explorer-studio.genlayer.com/address/0x346AEc8a5e659973D84A011ac6D53292Ace51Ede
+- **Contract**: `0xFed4C6551D4FC4e20a4214AD144Fe9a5F36dA298`
+- **Explorer**: https://explorer-studio.genlayer.com/address/0xFed4C6551D4FC4e20a4214AD144Fe9a5F36dA298
 - **Owner**: `0x28Cf6872815C1F275b4Ae5a291799d11cF5bd0De`
-- **Deploy tx**: `0xeaf3ea2bccea038755fa8b5ecdeeacd9634e78ccbd4e2637995a222a3f80bfb1`
+- **Deploy tx**: `0x98051c6ed452d6b0e4ea991f53bd56c747c82d1a72a3effcd2a5468fa3659933`
 - **Date**: 2026-08-21
 
-This deployment includes **hardened `_verify_fixtures` / `_fetch_match_result`**: web fetch + LLM are retried (up to 3x) and JSON parsing is tolerant, so a single transient fetch/LLM failure no longer fails `create_bet`. The steward security logic (date-binding + validator-checked kickoff) is unchanged.
+**Steward-request fix (fail-closed kickoff integrity):** the creator's `kickoff_utc`
+is persisted on-chain **only if the fixture source affirmatively verifies it**
+(`valid_kickoff === true`). If the fixture page shows no kickoff, the LLM omits
+`valid_kickoff`, or the timestamps disagree, the creator's kickoff is **dropped
+to `""`** and the bet falls back to the stricter date-only cutoff — a later
+same-day cutoff is never trusted without source verification.
 
-> A studionet tx **FINALIZES even when the contract call reverts** (a `UserError` rollback). The execution result is carried in `consensus_data.leader_receipt[0].execution_result` as `SUCCESS` or `ERROR`. All "reverts" below mean `execution_result = ERROR` and no on-chain state change. Transaction hashes are verifiable on the explorer.
+> A studionet tx **FINALIZES even when the contract call reverts** (a `UserError` rollback). The execution result is carried in `consensus_data.leader_receipt[0].execution_result` as `SUCCESS` or `ERROR`. All "reverts" below mean `execution_result = ERROR` and no on-chain state change unless noted. Transaction hashes are verifiable on the explorer.
 
 ---
 
 ## 1. Steward Request Security Tests — `deploy/test_steward_security.py`
 
-Full method + steward-request coverage. **26 checks, 0 failed.**
+Full method + steward-request coverage. **28 checks, 0 failed.**
 
 ### Explorer Evidence (tx hashes)
 
@@ -25,16 +30,14 @@ Key steward transactions, each verifiable at `https://explorer-studio.genlayer.c
 
 | Label | Exec | Tx |
 |---|---|---|
-| `steward:false_future_kickoff` (kickoff `2100-01-01T00:00:00Z`) | REVERT | `0x5ffa868fafeb55f2091244d0803491b671e2141a7554baba870f296e046d690b` |
-| `steward:kickoff_far_from_date` (kickoff `2026-08-25`) | REVERT | `0x165348aa1ca2050b9cefdbe7ddebc2b6920127dc4c8ed647b7ef36a770d2f24e` |
-| `steward:forged_kickoff_not_matching_fixture` (kickoff `2026-08-22T02:00:00Z`) | REVERT | `0xf5050a5a6d7e4df74d938472bdbf7b0cb92fb6e0a7830896eca4664843202907` |
-| `steward:real_kickoff_accepted` (Everton vs Crystal Palace, kickoff `14:00:00Z`) | SUCCESS | `0x864df8c98f8b92da2a5764e54d099033138dca4f364d6cbfdc464bd95ccc3944` |
-| owner `create_bet` (forged/blocked) | REVERT | `0x31ae7186cbbbf855d31a2ff363eb507a1e518cdcc1f674a120721d4e3a15968a` |
-| non-owner `withdraw_fees` | REVERT | `0xba7ee15c18474e7c40236fc976af1540a561f03282a7d3b286f35763167e1c29` |
-| bob `join_bet` before kickoff | SUCCESS | `0x1322abcb74e101bb7374055161696fb6cb2a3201ed9ead2f02c5d07c965952a1` |
-| owner `join_bet` | REVERT | `0x6733107651e5c667aff10b059f13aa081017b61b7804518b5e689a43c723308e` |
-
-Full tx list (in order): deposit `0xd0b2d988...`, deposit `0x61548356...`, withdraw `0x84ea0eef...`, deposit `0x621f55d9...`, validation reverts `0x25e5f603...` · `0x65eb56b2...` · `0x58b7b89e...` · `0xb6c1b79b...` · `0x799712cc...`, insufficient-balance `0x813d5fde...`, duplicate `0xb8e2b434...`.
+| `steward:false_future_kickoff` (kickoff `2100-01-01T00:00:00Z`) | REVERT | `0x728e84bebcf9de536cfaa19cd1e1bd63591936d5e65c339e566c2c2266641b99` |
+| `steward:kickoff_far_from_date` (kickoff `2026-08-25`) | REVERT | `0x92418588b691e090de31389854f29e5b68f64b00626cb228b6327c7ed432ed3a` |
+| `steward:forged_kickoff_not_matching_fixture` (kickoff `2026-08-22T02:00:00Z`, real 14:00 UTC) | SUCCESS but kickoff `''` | `0x09a374d972b26e915a3f00abfe584e1be46518ffe4c8dfe8c095f11d5d65da42` |
+| `steward:real_kickoff_accepted` (Man City vs Bournemouth, kickoff `13:00:00Z`) | SUCCESS, kickoff stored | `0x6a48359a2c3e3a710280421f5e0141f73992a37ad0233c7a1b004aef5431480b` |
+| owner `create_bet` (reverts) | REVERT | `0x5062a4875118a1d2addad8da44e41e5a7420bdbb7e01d4b5c2661234354d1d0f` |
+| non-owner `withdraw_fees` | REVERT | `0xdf331d24104753145ef935bc52659e919fca8520f02996f3874f60ad99d9cbf5` |
+| bob `join_bet` before kickoff | SUCCESS | `0x9ae5a057acf7364e6be9cc2502c878990b6203a2a5f7f68b317702fe6d1c2108` |
+| owner `join_bet` | REVERT | `0x1dad060397897f92f39ac3821ab49f004f77a28081a389c9edb280d9e969798f` |
 
 ### Views
 | Check | Result |
@@ -73,23 +76,27 @@ Full tx list (in order): deposit `0xd0b2d988...`, deposit `0x61548356...`, withd
 ### STEWARD REQUEST — false future kickoff
 | Check | Result |
 |---|---|
-| **false FUTURE kickoff `2100-01-01T00:00:00Z` (reverts)** | PASS (`exec=ERROR`, tx `0x5ffa868f...`) |
-| kickoff far from match date `2026-08-25` (reverts) | PASS (`exec=ERROR`, tx `0x165348aa...`) |
+| **false FUTURE kickoff `2100-01-01T00:00:00Z` (reverts)** | PASS (`exec=ERROR`, tx `0x728e84beb...`) |
+| kickoff far from match date `2026-08-25` (reverts) | PASS (`exec=ERROR`, tx `0x92418588b...`) |
 
 The contract binds `kickoff_utc` to the match date (deterministic). A bet creator **cannot** push the kickoff far into the future to keep the duel joinable after the match — the `create_bet` call reverts and no bet is stored.
 
-### STEWARD REQUEST — forged kickoff vs fixture (LLM validator)
+### STEWARD REQUEST — forged kickoff vs fixture (LLM validator, FAIL-CLOSED)
 | Check | Result |
 |---|---|
-| **forged kickoff `2026-08-22T02:00:00Z` (real is 14:00 UTC) rejected and NOT stored** | PASS (`exec=ERROR`, tx `0xf5050a5a...`) |
+| **forged kickoff `2026-08-22T02:00:00Z` (real is 14:00 UTC): bet created but kickoff NOT persisted** | PASS (`kickoff_utc == ""`) |
+| **forged kickoff cannot permit same-day late entry** | PASS (empty kickoff → date-only cutoff) |
 
-Even when the kickoff is bound to the match date, `_verify_fixtures` cross-checks the supplied kickoff against the fetched fixture (BBC page) via the LLM. An invented kickoff that does not match the fixture is rejected at create time.
+Even though the forged kickoff passes the date-binding check (same date), `_verify_fixtures`
+does NOT affirm it. The contract **fails closed**: the creator's kickoff is dropped
+(`kickoff_utc == ""`) so `join_bet` uses the date-only cutoff, which blocks ALL same-day
+joins — a later same-day cutoff is never accepted without affirmative source verification.
 
 ### Real create with verified kickoff (web + LLM)
 | Check | Result |
 |---|---|
-| real fixture (Everton vs Crystal Palace 2026-08-22) + correct kickoff `14:00:00Z` accepted | PASS (`exec=SUCCESS`, tx `0x864df8c9...`) |
-| `kickoff_utc` stored = `2026-08-22T14:00:00Z` | PASS |
+| real fixture (Man City vs Bournemouth 2026-08-23) + correct kickoff `13:00:00Z` accepted | PASS (`exec=SUCCESS`, tx `0x6a48359a2...`) |
+| `kickoff_utc` stored = `2026-08-23T13:00:00Z` | PASS |
 | bet status OPEN | PASS |
 
 ### Edge cases
@@ -101,37 +108,15 @@ Even when the kickoff is bound to the match date, `_verify_fixtures` cross-check
 ### Join before kickoff
 | Check | Result |
 |---|---|
-| bob joins real bet (accepted) | PASS (`exec=SUCCESS`, tx `0x1322abcb...`) |
+| bob joins real bet (accepted) | PASS (`exec=SUCCESS`, tx `0x9ae5a057a...`) |
 | bet JOINED | PASS |
-| owner `join_bet` (reverts) | PASS (`exec=ERROR`, tx `0x67331076...`) |
-
-### Raw execution output (abridged)
-```
-=== CONTRACT: 0x346AEc8a5e659973D84A011ac6D53292Ace51Ede ===
-[views] PASS x5
-[owner restrictions] create_bet -> FINALIZED (exec=ERROR) / withdraw_fees -> FINALIZED (exec=ERROR)
-[deposit/withdraw] deposit x3 (exec=SUCCESS), withdraw (exec=SUCCESS)
-[create_bet validation] 5x create_bet -> FINALIZED (exec=ERROR)
-[steward request: false future kickoff] 2x create_bet -> FINALIZED (exec=ERROR)
-[steward request: forged kickoff vs fixture (LLM)] create_bet -> FINALIZED (exec=ERROR) in 60.5s
-[create real bet with verified kickoff (web+LLM)] create_bet -> FINALIZED (exec=SUCCESS) in 187.1s
-[edge cases] 2x create_bet -> FINALIZED (exec=ERROR)
-[join before kickoff] join_bet -> FINALIZED (exec=SUCCESS) / join_bet -> FINALIZED (exec=ERROR)
-=== SUMMARY: 26 passed, 0 failed ===
-
-=== EXPLORER EVIDENCE (tx hashes) ===
-[steward:false_future_kickoff] REVERT  0x5ffa868f...
-[steward:kickoff_far_from_date] REVERT  0x165348aa...
-[steward:forged_kickoff_not_matching_fixture] REVERT  0xf5050a5a...
-[steward:real_kickoff_accepted] SUCCESS  0x864df8c9...
-ALL STUDIONET SECURITY CHECKS PASSED
-```
+| owner `join_bet` (reverts) | PASS (`exec=ERROR`, tx `0x1dad06039...`) |
 
 ---
 
 ## 2. Remaining Methods — `deploy/test_remaining_methods.py`
 
-**8 checks, 0 failed.**
+Runs on the same contract after the steward suite. **8 checks, 0 failed.**
 
 | Check | Result |
 |---|---|
@@ -146,13 +131,30 @@ ALL STUDIONET SECURITY CHECKS PASSED
 
 ---
 
-## 3. Summary
+## 3. Direct-Mode Fail-Closed Branch Tests — `tests/direct/test_p2p_join_cutoff.py`
+
+These cover the fail-open branches the steward flagged (16 tests, all passing):
+
+| Test | Asserts |
+|---|---|
+| `test_create_bet_forged_kickoff_not_persisted_fail_closed` | forged kickoff not matching fixture → `kickoff_utc == ""`, same-day join reverts |
+| `test_create_bet_page_without_kickoff_drops_kickoff` | page shows no kickoff → creator kickoff dropped |
+| `test_create_bet_omitted_valid_kickoff_drops_kickoff` | LLM omits `valid_kickoff` → treated as unverified, kickoff dropped |
+| `test_create_bet_explicit_valid_kickoff_persisted` | only affirmatively verified kickoff is stored |
+| `test_create_bet_false_future_kickoff_reverts` | kickoff 50 years in future → revert |
+
+`pytest tests/direct/` → **95 passed**.
+
+---
+
+## 4. Summary
 
 | Requirement | Evidence |
 |---|---|
-| **Steward: false future kickoff cannot permit late entry** | `create_bet` with `kickoff_utc = 2100-01-01T00:00:00Z` → `ERROR`, bet not stored (tx `0x5ffa868f...`) |
-| **Steward: validator-check kickoff against fixture** | `create_bet` with forged `2026-08-22T02:00:00Z` (real 14:00 UTC) → `ERROR`, bet not stored (tx `0xf5050a5a...`) |
-| **Steward: bind kickoff to match date** | kickoff far from match date → `ERROR` (tx `0x165348aa...`) |
-| All public methods work | 26 + 8 = **34 studionet checks, 0 failed** |
+| **Steward: false future kickoff cannot permit late entry** | `create_bet` with `kickoff_utc = 2100-01-01T00:00:00Z` → `ERROR`, bet not stored (tx `0x728e84beb...`) |
+| **Steward: validator-check kickoff against fixture, fail-closed** | forged `2026-08-22T02:00:00Z` → bet created but `kickoff_utc == ""`; date-only cutoff blocks same-day (tx `0x09a374d97...`) |
+| **Steward: bind kickoff to match date** | kickoff far from match date → `ERROR` (tx `0x92418588b...`) |
+| **Steward: no fail-open when page omits kickoff / response omits valid_kickoff** | direct tests `test_create_bet_page_without_kickoff_drops_kickoff`, `test_create_bet_omitted_valid_kickoff_drops_kickoff`, `test_create_bet_forged_kickoff_not_persisted_fail_closed` |
+| All public methods work | **36 studionet checks, 0 failed** (28 steward + 8 remaining) + 95 direct tests |
 
 All transaction hashes are independently verifiable on the GenLayer Studio explorer.

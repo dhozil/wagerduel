@@ -129,19 +129,20 @@ class P2PGambling(gl.Contract):
         team2: str,
         resolution_url: str,
         kickoff_utc: str = "",
-    ) -> bool:
-        """Verify that team1 vs team2 appears in the real fixtures for game_date.
+    ) -> dict:
+        """Verify teams + kickoff against the real fixtures for game_date.
 
-        Fetches the resolution URL page and uses an LLM to extract the fixtures.
-        When ``kickoff_utc`` is provided, the LLM must also confirm that the
-        supplied kickoff matches the kickoff shown on the page (within ~90
-        minutes), so a bet creator cannot forge a future kickoff to keep the
-        duel joinable after the match has started.
+        Fetches the resolution URL page and uses an LLM. Returns a dict:
+            {"valid": bool, "kickoff_verified": bool}
 
-        Returns True only if both team names match a real fixture on that date
-        AND (when kickoff is supplied) the kickoff matches the fixture.
-        This prevents spam bets with fabricated team names and fabricated
-        kickoff timestamps.
+        - ``valid`` True only if both team names match a real fixture on that
+          date.
+        - ``kickoff_verified`` is only meaningful when ``kickoff_utc`` is
+          supplied. It is True ONLY when the LLM affirmatively confirms the
+          supplied kickoff matches the kickoff shown on the page. It is False
+          (fail-closed) when the page shows no kickoff for the match, the LLM
+          omits ``valid_kickoff``, or the kickoff does not match. A creator
+          must never be able to supply an unverified kickoff.
         """
 
         def leader_fn():
@@ -158,7 +159,7 @@ class P2PGambling(gl.Contract):
                 except Exception:
                     web_data = ""
             if not web_data or not web_data.strip():
-                return False if not kickoff_utc else {"valid": False, "valid_kickoff": False}
+                return {"valid": False, "kickoff_verified": False}
 
             if kickoff_utc:
                 prompt = f"""You are a football fixture verifier. Below is a fixtures/scores
@@ -173,11 +174,11 @@ differences (e.g. "Man City" vs "Manchester City"). Be lenient — accept
 reasonable abbreviations and common short forms.
 
 Separately, the bet creator claims this match kicks off at {kickoff_utc}
-(UTC). Independently check the page whether this kickoff matches the
-scheduled kickoff shown for that match within about 90 minutes. The page may
-show the kickoff in a local/venue timezone — convert it to UTC using your
-understanding of the competition/venue. If the page does not show a kickoff
-time for the match, set valid_kickoff to true (nothing to cross-check).
+(UTC). Only set valid_kickoff to true if you can POSITIVELY confirm, from the
+page, a scheduled kickoff for this match that matches the supplied kickoff
+within about 90 minutes (converting the page's local/venue timezone to UTC).
+If the page does not show a kickoff time for this match, or you cannot
+confirm it matches, set valid_kickoff to false.
 
 Respond ONLY with a valid JSON object (no markdown, no code fences, no
 commentary) with exactly these keys:
@@ -208,17 +209,17 @@ commentary) with exactly these keys:
                 try:
                     result = gl.nondet.exec_prompt(prompt, response_format="json")
                     if kickoff_utc:
-                        # Missing valid_kickoff means the page had no kickoff to
-                        # cross-check, so treat it as true rather than failing on
-                        # a parse hiccup. An explicit false still rejects.
+                        # Fail-closed: kickoff is verified ONLY on explicit true.
+                        # A missing valid_kickoff does NOT verify the kickoff.
                         return {
                             "valid": bool(result.get("valid", False)),
-                            "valid_kickoff": bool(result.get("valid_kickoff", True)),
+                            "kickoff_verified": result.get("valid_kickoff") is True,
                         }
-                    return bool(result.get("valid", False))
+                    return {"valid": bool(result.get("valid", False)),
+                            "kickoff_verified": False}
                 except Exception:
                     continue
-            return False if not kickoff_utc else {"valid": False, "valid_kickoff": False}
+            return {"valid": False, "kickoff_verified": False}
 
         def validator_fn(leader_result) -> bool:
             if not isinstance(leader_result, gl.vm.Return):
@@ -226,12 +227,7 @@ commentary) with exactly these keys:
             my_result = leader_fn()
             return leader_result.calldata == my_result
 
-        verified = gl.vm.run_nondet_unsafe(leader_fn, validator_fn)
-        if kickoff_utc:
-            return bool(verified.get("valid", False)) and bool(
-                verified.get("valid_kickoff", False)
-            )
-        return bool(verified)
+        return gl.vm.run_nondet_unsafe(leader_fn, validator_fn)
 
     def _fetch_match_result(self, resolution_url: str, team1: str, team2: str) -> dict:
         def leader_fn():
@@ -391,12 +387,22 @@ commentary) with exactly these keys:
 
         # Verify teams exist in real fixtures for this date (and that the
         # supplied kickoff matches the fixture when one is provided).
-        if not self._verify_fixtures(
+        verify = self._verify_fixtures(
             game_date, team1, team2, resolution_url, kickoff_utc
-        ):
+        )
+        if not verify.get("valid"):
             raise gl.vm.UserError(
                 "Teams not found in fixtures for this date"
             )
+
+        # Fail-closed: only persist the creator's kickoff if the fixture
+        # source AFFIRMATIVELY verified it. If the page showed no kickoff, the
+        # LLM omitted valid_kickoff, or the timestamps disagreed, we drop it to
+        # "" so the bet uses the (more restrictive) date-only cutoff — a later
+        # same-day cutoff is never trusted without source verification.
+        stored_kickoff = kickoff_utc if (
+            kickoff_utc and verify.get("kickoff_verified")
+        ) else ""
 
         bet_id = f"{game_date}_{team1}_{team2}".lower()
         if bet_id in self.bets and self.bets[bet_id].status in (
@@ -410,7 +416,7 @@ commentary) with exactly these keys:
             creator=sender,
             opponent=Address(bytes(20)),
             game_date=game_date,
-            kickoff_utc=kickoff_utc,
+            kickoff_utc=stored_kickoff,
             resolution_url=resolution_url,
             team1=team1,
             team2=team2,

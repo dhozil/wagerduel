@@ -43,14 +43,16 @@ def test_create_bet_false_future_kickoff_reverts(
         )
 
 
-def test_create_bet_forged_kickoff_not_matching_fixture_reverts(
-    direct_vm, direct_deploy, direct_alice
+def test_create_bet_forged_kickoff_not_persisted_fail_closed(
+    direct_vm, direct_deploy, direct_alice, direct_bob
 ):
-    """A same-day kickoff that does not match the fixture is rejected.
+    """A same-day kickoff that does NOT match the fixture is not persisted.
 
     Even when the kickoff is bound to the match date, the validator must
-    cross-check it against the fetched fixture — a creator cannot invent a
-    later kickoff on match day to permit betting on a known result.
+    cross-check it against the fetched fixture. If the supplied kickoff does
+    not match the fixture page (valid_kickoff=false), the bet is created but
+    the CREATOR'S kickoff is dropped (stored as "") — the bet falls back to the
+    stricter date-only cutoff so it can never be joined later on match day.
     """
     contract = direct_deploy("contracts/p2p_gambling.py")
     fund(direct_vm, contract, direct_alice, AMOUNT * 5)
@@ -68,11 +70,113 @@ def test_create_bet_forged_kickoff_not_matching_fixture_reverts(
     )
     direct_vm.sender = direct_alice
 
-    with direct_vm.expect_revert("Teams not found in fixtures for this date"):
-        contract.create_bet(
-            GAME_DATE, "TeamA", "TeamB", "1", RESOLUTION_URL, AMOUNT,
-            kickoff_utc="2050-06-20T21:00:00Z",
-        )
+    # Bet is created, but the forged kickoff must NOT be stored.
+    contract.create_bet(
+        GAME_DATE, "TeamA", "TeamB", "1", RESOLUTION_URL, AMOUNT,
+        kickoff_utc="2050-06-20T21:00:00Z",
+    )
+    bet = contract.get_bet(f"{GAME_DATE}_teama_teamb")
+    assert bet["status"] == "OPEN"
+    assert bet["kickoff_utc"] == "", (
+        "unverified kickoff must be dropped (fail-closed)"
+    )
+
+    # Date-only fallback: joining later the same day must revert.
+    fund(direct_vm, contract, direct_bob, AMOUNT * 5)
+    warp_datetime(direct_vm, f"{GAME_DATE}T14:00:00Z")
+    direct_vm.sender = direct_bob
+    with direct_vm.expect_revert("Cannot join bet: match has already started or completed"):
+        contract.join_bet(f"{GAME_DATE}_teama_teamb", "2")
+
+
+def test_create_bet_page_without_kickoff_drops_kickoff(
+    direct_vm, direct_deploy, direct_alice
+):
+    """If the fixture page shows no kickoff, the supplied kickoff is dropped.
+
+    The LLM cannot affirmatively verify the kickoff, so persisting the
+    creator's value would be fail-open. Instead the bet uses the date-only
+    cutoff, which is strictly more restrictive (all same-day joins blocked).
+    """
+    contract = direct_deploy("contracts/p2p_gambling.py")
+    fund(direct_vm, contract, direct_alice, AMOUNT * 5)
+
+    # No kickoff on the page: LLM reports valid=true but valid_kickoff=false.
+    direct_vm.clear_mocks()
+    direct_vm.mock_web(r".*bbc\.com.*scores-fixtures.*", {
+        "status": 200,
+        "body": FIXTURES_MOCK_HTML,
+    })
+    direct_vm.mock_llm(
+        r".*football fixture verifier.*",
+        '{"valid": true, "valid_kickoff": false}',
+    )
+    direct_vm.sender = direct_alice
+    contract.create_bet(
+        GAME_DATE, "TeamA", "TeamB", "1", RESOLUTION_URL, AMOUNT,
+        kickoff_utc="2050-06-20T18:00:00Z",
+    )
+    bet = contract.get_bet(f"{GAME_DATE}_teama_teamb")
+    assert bet["kickoff_utc"] == "", (
+        "page without kickoff must never persist a creator kickoff"
+    )
+
+
+def test_create_bet_omitted_valid_kickoff_drops_kickoff(
+    direct_vm, direct_deploy, direct_alice
+):
+    """If the LLM response omits valid_kickoff, the kickoff is NOT persisted.
+
+    An absent valid_kickoff is treated as unverified (fail-closed), not as a
+    pass. The creator's kickoff is dropped and the bet uses date-only cutoff.
+    """
+    contract = direct_deploy("contracts/p2p_gambling.py")
+    fund(direct_vm, contract, direct_alice, AMOUNT * 5)
+
+    # Response omits valid_kickoff entirely.
+    direct_vm.clear_mocks()
+    direct_vm.mock_web(r".*bbc\.com.*scores-fixtures.*", {
+        "status": 200,
+        "body": FIXTURES_MOCK_HTML,
+    })
+    direct_vm.mock_llm(
+        r".*football fixture verifier.*",
+        '{"valid": true}',
+    )
+    direct_vm.sender = direct_alice
+    contract.create_bet(
+        GAME_DATE, "TeamA", "TeamB", "1", RESOLUTION_URL, AMOUNT,
+        kickoff_utc="2050-06-20T18:00:00Z",
+    )
+    bet = contract.get_bet(f"{GAME_DATE}_teama_teamb")
+    assert bet["kickoff_utc"] == "", (
+        "missing valid_kickoff must be treated as unverified (fail-closed)"
+    )
+
+
+def test_create_bet_explicit_valid_kickoff_persisted(
+    direct_vm, direct_deploy, direct_alice
+):
+    """Only an affirmatively verified kickoff is persisted on-chain."""
+    contract = direct_deploy("contracts/p2p_gambling.py")
+    fund(direct_vm, contract, direct_alice, AMOUNT * 5)
+
+    direct_vm.clear_mocks()
+    direct_vm.mock_web(r".*bbc\.com.*scores-fixtures.*", {
+        "status": 200,
+        "body": FIXTURES_MOCK_HTML,
+    })
+    direct_vm.mock_llm(
+        r".*football fixture verifier.*",
+        '{"valid": true, "valid_kickoff": true}',
+    )
+    direct_vm.sender = direct_alice
+    contract.create_bet(
+        GAME_DATE, "TeamA", "TeamB", "1", RESOLUTION_URL, AMOUNT,
+        kickoff_utc=KICKOFF_UTC,
+    )
+    bet = contract.get_bet(f"{GAME_DATE}_teama_teamb")
+    assert bet["kickoff_utc"] == KICKOFF_UTC
 
 
 

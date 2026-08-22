@@ -21,7 +21,7 @@ from genlayer_py.types import TransactionStatus
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 load_dotenv(os.path.join(ROOT, ".env"))
 
-ADDRESS = sys.argv[1] if len(sys.argv) > 1 else "0x346AEc8a5e659973D84A011ac6D53292Ace51Ede"
+ADDRESS = sys.argv[1] if len(sys.argv) > 1 else "0xFed4C6551D4FC4e20a4214AD144Fe9a5F36dA298"
 OWNER = "0x28Cf6872815C1F275b4Ae5a291799d11cF5bd0De"
 GEN = 10**18
 
@@ -30,6 +30,12 @@ TEAM1 = "Everton"
 TEAM2 = "Crystal Palace"
 RESOLUTION_URL = "https://www.bbc.com/sport/football/scores-fixtures/2026-08-22"
 KICKOFF_UTC = "2026-08-22T14:00:00Z"  # 15:00 UK during BST = 14:00 UTC
+
+GAME_DATE2 = "2026-08-23"
+TEAM1_2 = "Manchester City"
+TEAM2_2 = "Bournemouth"
+RESOLUTION_URL2 = "https://www.bbc.com/sport/football/scores-fixtures/2026-08-23"
+KICKOFF_UTC2 = "2026-08-23T13:00:00Z"  # 14:00 UK during BST = 13:00 UTC
 
 PASS = 0
 FAIL = 0
@@ -191,31 +197,37 @@ def main():
     # ---- STEWARD REQUEST: forged kickoff vs fixture (LLM validator) ----
     print("\n[steward request: forged kickoff vs fixture (LLM)]")
     # Real fixture (Everton vs Crystal Palace 2026-08-22), but a WRONG kickoff
-    # (02:00 UTC instead of 14:00 UTC) -> LLM must reject as not matching.
-    bet_id_forged = f"{GAME_DATE}_{TEAM1}_{TEAM2}".lower()
-    rev, _ = try_write(alice, "create_bet",
-                       [GAME_DATE, TEAM1, TEAM2, "1", RESOLUTION_URL, GEN, 0,
-                        "2026-08-22T02:00:00Z"],
-                       label="steward:forged_kickoff_not_matching_fixture")
-    # Confirm nothing was stored for the forged attempt
-    try:
-        read("get_bet", [bet_id_forged])
-        stored = True
-    except Exception:
-        stored = False
-    check("forged kickoff rejected and NOT stored", rev and not stored)
+    # (02:00 UTC instead of 14:00 UTC) -> LLM fails to affirm it; the bet must
+    # be created WITHOUT the creator's kickoff (fail-closed date-only cutoff).
+    bet_ev = f"{GAME_DATE}_{TEAM1}_{TEAM2}".lower()  # everton_crystal palace
+    rev, rec = try_write(alice, "create_bet",
+                         [GAME_DATE, TEAM1, TEAM2, "1", RESOLUTION_URL, GEN, 0,
+                          "2026-08-22T02:00:00Z"],
+                         label="steward:forged_kickoff_not_matching_fixture")
+    check("forged kickoff: bet created (teams valid)", not rev)
+    b_forged = read("get_bet", [bet_ev])
+    check("forged kickoff NOT persisted (stored '')",
+          b_forged.get("kickoff_utc", None) == "",
+          f"(stored={b_forged.get('kickoff_utc')!r})")
+    # The stored empty kickoff means join_bet uses date-only cutoff: joining
+    # on match day is blocked even though the creator claimed a late kickoff.
+    check("forged kickoff cannot permit same-day late entry",
+          b_forged["kickoff_utc"] == "")
 
     # ---- Real create with correct kickoff (web + LLM validator) ----
     print("\n[create real bet with verified kickoff (web+LLM)]")
+    # Use a SECOND fixture (Man City vs Bournemouth 2026-08-23) so the forged
+    # kickoff bet above and the real-kickoff bet do not collide.
     rev, _ = try_write(alice, "create_bet",
-                       [GAME_DATE, TEAM1, TEAM2, "1", RESOLUTION_URL, GEN, 0,
-                        KICKOFF_UTC],
+                       [GAME_DATE2, TEAM1_2, TEAM2_2, "1", RESOLUTION_URL2, GEN, 0,
+                        KICKOFF_UTC2],
                        label="steward:real_kickoff_accepted")
     check("real fixture + correct kickoff (accepted)", not rev)
+    bet_id_forged = f"{GAME_DATE2}_{TEAM1_2}_{TEAM2_2}".lower()
     bet = None
     if not rev:
         bet = read("get_bet", [bet_id_forged])
-        check("kickoff_utc stored", bet.get("kickoff_utc") == KICKOFF_UTC,
+        check("kickoff_utc stored", bet.get("kickoff_utc") == KICKOFF_UTC2,
               f"({bet.get('kickoff_utc')})")
         check("bet OPEN", bet["status"] == "OPEN")
     else:
